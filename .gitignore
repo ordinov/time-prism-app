@@ -1,0 +1,17 @@
+# Docs, AI, and Notebook files
+
+docs/
+.claude/
+CLAUDE.md
+NOTE.txt
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+
+# Environment files
+.env
+.env.local
