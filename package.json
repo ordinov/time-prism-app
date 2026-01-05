@@ -4,11 +4,14 @@
   "description": "Time tracking app with DAW-style timeline",
   "main": "dist/main/index.js",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "build": "tsc -p tsconfig.node.json && vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "dev:vite": "vite",
+    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "build:electron": "electron-builder"
   },
   "author": "",
   "license": "MIT",
@@ -20,6 +23,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.23",
+    "concurrently": "^9.2.1",
     "electron": "^39.2.7",
     "electron-builder": "^26.0.12",
     "jsdom": "^27.0.1",
@@ -27,7 +31,8 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^6.4.1",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "wait-on": "^9.0.3"
   },
   "dependencies": {
     "better-sqlite3": "^12.5.0",
