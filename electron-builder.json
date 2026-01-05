@@ -1,0 +1,16 @@
+{
+  "appId": "com.timeprism.app",
+  "productName": "Time Prism",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "mac": {
+    "target": "dmg"
+  },
+  "win": {
+    "target": "nsis"
+  }
+}
