@@ -1,0 +1,13 @@
+{
+  "name": "time-prism",
+  "version": "0.1.0",
+  "description": "Time tracking app with DAW-style timeline",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "author": "",
+  "license": "MIT"
+}
