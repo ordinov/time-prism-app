@@ -5,9 +5,8 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "outDir": "dist/main",
-    "rootDir": "src/main",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true
   },
-  "include": ["src/main", "src/shared", "vite.config.ts", "electron.vite.config.ts"]
+  "include": ["vite.config.ts", "vitest.config.ts"]
 }

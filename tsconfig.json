@@ -21,6 +21,5 @@
       "@shared/*": ["src/shared/*"]
     }
   },
-  "include": ["src/renderer"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src/renderer"]
 }
