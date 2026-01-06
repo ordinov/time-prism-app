@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "Bash(mkdir:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)",
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(./node_modules/.bin/tailwindcss:*)",
+      "Bash(cat:*)",
+      "Bash(npm pkg set:*)"
+    ]
+  }
+}
