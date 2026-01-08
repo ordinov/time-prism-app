@@ -10,7 +10,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "dev:vite": "vite",
-    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build:electron": "electron-builder",
     "postinstall": "electron-rebuild"
   },
@@ -23,10 +23,12 @@
     "@testing-library/react": "^16.3.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "^19.2.7",
+    "@types/react-datepicker": "^6.2.0",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.23",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "electron": "^39.2.7",
     "electron-builder": "^26.0.12",
     "jsdom": "^27.0.1",
@@ -40,6 +42,7 @@
   "dependencies": {
     "better-sqlite3": "^12.5.0",
     "react": "^19.2.3",
+    "react-datepicker": "^9.1.0",
     "react-dom": "^19.2.3",
     "react-router-dom": "^7.11.0"
   }

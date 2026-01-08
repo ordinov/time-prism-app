@@ -22,6 +22,8 @@ function createWindow(): void {
   })
 
   if (process.env.NODE_ENV === 'development') {
+    // Disable cache in development
+    mainWindow.webContents.session.clearCache()
     mainWindow.loadURL('http://localhost:5173')
     mainWindow.webContents.openDevTools()
   } else {

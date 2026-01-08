@@ -117,6 +117,12 @@ export function registerIpcHandlers(): void {
     db.prepare('DELETE FROM sessions WHERE id = ?').run(id)
   })
 
+  ipcMain.handle('db:sessions:deleteByProject', (_, projectId: number): number => {
+    const db = getDatabase()
+    const result = db.prepare('DELETE FROM sessions WHERE project_id = ?').run(projectId)
+    return result.changes
+  })
+
   // Backup
   ipcMain.handle('backup:create', (): string => {
     return createBackup()

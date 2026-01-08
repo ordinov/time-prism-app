@@ -1,33 +1,121 @@
 import { NavLink } from 'react-router-dom'
 
+// SVG Icons as components
+const ClockIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
+const FolderIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+  </svg>
+)
+
+const UsersIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+  </svg>
+)
+
+const ChartIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+  </svg>
+)
+
+// Prism logo icon
+const PrismIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+    <defs>
+      <linearGradient id="prismGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#8b5cf6" />
+        <stop offset="50%" stopColor="#6366f1" />
+        <stop offset="100%" stopColor="#0ea5e9" />
+      </linearGradient>
+    </defs>
+    <path
+      d="M12 2L2 19h20L12 2z"
+      stroke="url(#prismGradient)"
+      strokeWidth="2"
+      fill="none"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 2v17M12 19l-5-8.5M12 19l5-8.5"
+      stroke="url(#prismGradient)"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      opacity="0.6"
+    />
+  </svg>
+)
+
 const navItems = [
-  { to: '/tracking', label: 'Track', icon: '📅' },
-  { to: '/projects', label: 'Progetti', icon: '📁' },
-  { to: '/clients', label: 'Clienti', icon: '👤' },
-  { to: '/reports', label: 'Report', icon: '📊' },
+  { to: '/tracking', label: 'Track', icon: ClockIcon },
+  { to: '/projects', label: 'Progetti', icon: FolderIcon },
+  { to: '/clients', label: 'Clienti', icon: UsersIcon },
+  { to: '/reports', label: 'Report', icon: ChartIcon },
 ]
 
 export default function Sidebar() {
   return (
-    <nav className="w-20 bg-gray-800 text-white flex flex-col">
-      <div className="p-2 text-center border-b border-gray-700">
-        <span className="text-xs font-bold">Time Prism</span>
+    <nav className="w-16 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col">
+      {/* Logo */}
+      <div className="h-16 flex items-center justify-center border-b border-[var(--border-subtle)]">
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--prism-violet)] to-[var(--prism-cyan)]
+                        flex items-center justify-center shadow-[var(--glow-prism)]
+                        transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.4)]">
+          <PrismIcon />
+        </div>
       </div>
-      <div className="flex-1 py-4">
+
+      {/* Navigation */}
+      <div className="flex-1 py-4 flex flex-col items-center gap-1">
         {navItems.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex flex-col items-center py-3 px-2 hover:bg-gray-700 transition-colors ${
-                isActive ? 'bg-gray-700 border-l-2 border-blue-400' : ''
-              }`
+              `relative w-10 h-10 rounded-xl flex items-center justify-center
+               transition-all duration-200 group
+               ${isActive
+                 ? 'bg-white/10 text-[var(--text-primary)]'
+                 : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/5'
+               }`
             }
           >
-            <span className="text-xl">{item.icon}</span>
-            <span className="text-xs mt-1">{item.label}</span>
+            {({ isActive }) => (
+              <>
+                <item.icon />
+
+                {/* Active indicator */}
+                {isActive && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full
+                                  bg-gradient-to-b from-[var(--prism-violet)] to-[var(--prism-cyan)]
+                                  shadow-[var(--glow-prism)]" />
+                )}
+
+                {/* Tooltip */}
+                <span className="absolute left-full ml-3 px-2.5 py-1.5 rounded-lg
+                                 bg-[var(--bg-overlay)] border border-[var(--border-subtle)]
+                                 text-xs font-medium text-[var(--text-primary)]
+                                 opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                                 transition-all duration-150 whitespace-nowrap z-50
+                                 shadow-[var(--shadow-md)]">
+                  {item.label}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
+      </div>
+
+      {/* Bottom section - version indicator */}
+      <div className="py-4 flex justify-center">
+        <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-disabled)]"
+             title="Time Prism v0.1.0" />
       </div>
     </nav>
   )

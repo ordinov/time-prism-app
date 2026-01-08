@@ -16,11 +16,13 @@
       "Bash(npm pkg set:*)",
       "Bash(npm run build:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run dev:*)",
       "Bash(npx electron-rebuild)",
       "Bash(timeout /t 8 /nobreak)",
       "Bash(taskkill:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Skill(superpowers:systematic-debugging)",
+      "Bash(npm ls:*)",
+      "Skill(frontend-design:frontend-design)"
     ]
   }
 }

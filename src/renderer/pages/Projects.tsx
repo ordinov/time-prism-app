@@ -3,10 +3,56 @@ import { useProjects } from '../hooks/useProjects'
 import { useClients } from '../hooks/useClients'
 import type { ProjectWithClient } from '@shared/types'
 
-const PRESET_COLORS = [
-  '#EF4444', '#F97316', '#EAB308', '#22C55E',
-  '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899'
-]
+// Icons
+const PlusIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+  </svg>
+)
+
+const PencilIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+  </svg>
+)
+
+const ArchiveIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+  </svg>
+)
+
+const TrashIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+  </svg>
+)
+
+const SearchIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+  </svg>
+)
+
+const FolderIcon = () => (
+  <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+  </svg>
+)
+
+const ClipboardIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+  </svg>
+)
+
+const CheckIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+  </svg>
+)
+
+const DEFAULT_COLOR = '#8B5CF6'
 
 export default function Projects() {
   const [showArchived, setShowArchived] = useState(false)
@@ -20,7 +66,8 @@ export default function Projects() {
 
   const [formName, setFormName] = useState('')
   const [formClientId, setFormClientId] = useState<number | null>(null)
-  const [formColor, setFormColor] = useState(PRESET_COLORS[0])
+  const [formColor, setFormColor] = useState(DEFAULT_COLOR)
+  const [copied, setCopied] = useState(false)
 
   const filteredProjects = projects.filter(p => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
@@ -31,9 +78,29 @@ export default function Projects() {
   const resetForm = () => {
     setFormName('')
     setFormClientId(null)
-    setFormColor(PRESET_COLORS[0])
+    setFormColor(DEFAULT_COLOR)
     setIsAdding(false)
     setEditingId(null)
+    setCopied(false)
+  }
+
+  const copyColorToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(formColor.replace('#', '').toUpperCase())
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+    }
+  }
+
+  const handleHexInput = (value: string) => {
+    // Allow typing without #
+    let hex = value.startsWith('#') ? value : `#${value}`
+    // Validate hex format
+    if (/^#[0-9A-Fa-f]{0,6}$/.test(hex)) {
+      setFormColor(hex.toUpperCase())
+    }
   }
 
   const handleCreate = async () => {
@@ -70,113 +137,309 @@ export default function Projects() {
     }
   }
 
-  if (loading) return <div className="p-4">Caricamento...</div>
-  if (error) return <div className="p-4 text-red-600">Errore: {error}</div>
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[var(--prism-violet)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-[var(--error)] mb-2">Errore nel caricamento</p>
+          <p className="text-[var(--text-muted)] text-sm">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-full">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Progetti</h1>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Progetti</h1>
         <button
-          onClick={() => { setIsAdding(true); setEditingId(null) }}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          onClick={() => {
+            setFormName('')
+            setFormClientId(null)
+            setFormColor(DEFAULT_COLOR)
+            setEditingId(null)
+            setIsAdding(true)
+          }}
+          className="btn btn-primary"
         >
-          + Nuovo
+          <PlusIcon />
+          <span>Nuovo progetto</span>
         </button>
       </div>
 
-      <div className="flex gap-4 mb-4">
-        <input
-          type="text"
-          placeholder="Cerca..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-3 py-2 border rounded"
-        />
+      {/* Filters */}
+      <div className="flex gap-3 mb-6">
+        <div className="relative flex-1">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+            <SearchIcon />
+          </div>
+          <input
+            type="text"
+            placeholder="Cerca progetti..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="input pl-10 w-full"
+          />
+        </div>
         <select
           value={filterClientId}
           onChange={e => setFilterClientId(e.target.value ? Number(e.target.value) : '')}
-          className="px-3 py-2 border rounded"
+          className="select w-48"
         >
           <option value="">Tutti i clienti</option>
           {clients.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--bg-surface)]
+                         border border-[var(--border-subtle)] cursor-pointer
+                         hover:border-[var(--border-default)] transition-colors">
           <input
             type="checkbox"
             checked={showArchived}
             onChange={e => setShowArchived(e.target.checked)}
+            className="w-4 h-4 rounded border-[var(--border-default)] bg-[var(--bg-base)]
+                       text-[var(--prism-violet)] focus:ring-[var(--prism-violet)] focus:ring-offset-0"
           />
-          <span className="text-sm">Archiviati</span>
+          <span className="text-sm text-[var(--text-secondary)]">Archiviati</span>
         </label>
       </div>
 
-      {(isAdding || editingId) && (
-        <div className="p-4 bg-gray-50 rounded mb-4 space-y-3">
-          <input
-            type="text"
-            placeholder="Nome progetto"
-            value={formName}
-            onChange={e => setFormName(e.target.value)}
-            className="w-full px-3 py-2 border rounded"
-            autoFocus
-          />
-          <select
-            value={formClientId ?? ''}
-            onChange={e => setFormClientId(e.target.value ? Number(e.target.value) : null)}
-            className="w-full px-3 py-2 border rounded"
-          >
-            <option value="">Nessun cliente</option>
-            {clients.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <div className="flex gap-2">
-            {PRESET_COLORS.map(color => (
-              <button
-                key={color}
-                onClick={() => setFormColor(color)}
-                className={`w-8 h-8 rounded-full border-2 ${formColor === color ? 'border-gray-800' : 'border-transparent'}`}
-                style={{ backgroundColor: color }}
-              />
-            ))}
+      {/* Form for new project */}
+      {isAdding && (
+        <div
+          key="new"
+          className="card p-5 mb-6 space-y-4 animate-scale-in"
+        >
+          <div>
+            <label className="text-sm text-[var(--text-muted)] mb-2 block">Nome progetto</label>
+            <input
+              type="text"
+              placeholder="Nome progetto"
+              value={formName}
+              onChange={e => setFormName(e.target.value)}
+              className="input"
+              autoFocus
+            />
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={editingId ? handleUpdate : handleCreate}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          <div>
+            <label className="text-sm text-[var(--text-muted)] mb-2 block">Cliente</label>
+            <select
+              value={formClientId ?? ''}
+              onChange={e => setFormClientId(e.target.value ? Number(e.target.value) : null)}
+              className="select"
             >
-              {editingId ? 'Aggiorna' : 'Crea'}
+              <option value="">Nessun cliente</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Color picker */}
+          <div>
+            <label className="text-sm text-[var(--text-muted)] mb-2 block">Colore</label>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <input
+                  type="color"
+                  value={formColor}
+                  onChange={e => setFormColor(e.target.value.toUpperCase())}
+                  className="w-10 h-10 rounded-lg cursor-pointer border-2 border-[var(--border-default)]
+                             bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0
+                             [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-none"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-[var(--bg-overlay)] rounded-lg border border-[var(--border-default)] px-3 py-2">
+                <span className="text-[var(--text-muted)] font-mono text-sm">#</span>
+                <input
+                  type="text"
+                  value={formColor.replace('#', '')}
+                  onChange={e => handleHexInput(e.target.value)}
+                  maxLength={6}
+                  className="w-20 bg-transparent border-none outline-none font-mono text-sm
+                             text-[var(--text-primary)] uppercase tracking-wider"
+                  placeholder="8B5CF6"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={copyColorToClipboard}
+                className={`btn btn-ghost btn-icon transition-all duration-200 ${
+                  copied ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
+                }`}
+                title={copied ? 'Copiato!' : 'Copia HEX'}
+              >
+                {copied ? <CheckIcon /> : <ClipboardIcon />}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={handleCreate}
+              className="btn btn-primary"
+            >
+              Crea progetto
             </button>
-            <button onClick={resetForm} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+            <button onClick={resetForm} className="btn btn-secondary">
               Annulla
             </button>
           </div>
         </div>
       )}
 
+      {/* Projects list */}
       <div className="space-y-2">
         {filteredProjects.map(project => (
-          <div
-            key={project.id}
-            className={`flex items-center justify-between p-3 bg-white rounded shadow-sm ${project.archived ? 'opacity-50' : ''}`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: project.color }} />
-              <span className="font-medium">{project.name}</span>
-              <span className="text-gray-500 text-sm">{project.client_name ?? '—'}</span>
+          editingId === project.id ? (
+            /* Inline edit form */
+            <div
+              key={project.id}
+              className="card p-5 space-y-4 animate-scale-in"
+            >
+              <div>
+                <label className="text-sm text-[var(--text-muted)] mb-2 block">Nome progetto</label>
+                <input
+                  type="text"
+                  placeholder="Nome progetto"
+                  value={formName}
+                  onChange={e => setFormName(e.target.value)}
+                  className="input"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="text-sm text-[var(--text-muted)] mb-2 block">Cliente</label>
+                <select
+                  value={formClientId ?? ''}
+                  onChange={e => setFormClientId(e.target.value ? Number(e.target.value) : null)}
+                  className="select"
+                >
+                  <option value="">Nessun cliente</option>
+                  {clients.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Color picker */}
+              <div>
+                <label className="text-sm text-[var(--text-muted)] mb-2 block">Colore</label>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <input
+                      type="color"
+                      value={formColor}
+                      onChange={e => setFormColor(e.target.value.toUpperCase())}
+                      className="w-10 h-10 rounded-lg cursor-pointer border-2 border-[var(--border-default)]
+                                 bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0
+                                 [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-none"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 bg-[var(--bg-overlay)] rounded-lg border border-[var(--border-default)] px-3 py-2">
+                    <span className="text-[var(--text-muted)] font-mono text-sm">#</span>
+                    <input
+                      type="text"
+                      value={formColor.replace('#', '')}
+                      onChange={e => handleHexInput(e.target.value)}
+                      maxLength={6}
+                      className="w-20 bg-transparent border-none outline-none font-mono text-sm
+                                 text-[var(--text-primary)] uppercase tracking-wider"
+                      placeholder="8B5CF6"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyColorToClipboard}
+                    className={`btn btn-ghost btn-icon transition-all duration-200 ${
+                      copied ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
+                    }`}
+                    title={copied ? 'Copiato!' : 'Copia HEX'}
+                  >
+                    {copied ? <CheckIcon /> : <ClipboardIcon />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={handleUpdate}
+                  className="btn btn-primary"
+                >
+                  Aggiorna
+                </button>
+                <button onClick={resetForm} className="btn btn-secondary">
+                  Annulla
+                </button>
+              </div>
             </div>
-            <div className="flex gap-1">
-              <button onClick={() => startEdit(project)} className="p-1 hover:bg-gray-100 rounded" title="Modifica">✏️</button>
-              <button onClick={() => archive(project)} className="p-1 hover:bg-gray-100 rounded" title={project.archived ? 'Ripristina' : 'Archivia'}>📦</button>
-              <button onClick={() => handleDelete(project.id)} className="p-1 hover:bg-gray-100 rounded" title="Elimina">🗑️</button>
+          ) : (
+            /* Project card */
+            <div
+              key={project.id}
+              className={`card flex items-center justify-between p-4 group
+                         hover:border-[var(--border-default)] transition-all duration-150
+                         ${project.archived ? 'opacity-50' : ''}`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-3 h-3 rounded-full ring-2 ring-white/10"
+                  style={{ backgroundColor: project.color }}
+                />
+                <span className="font-medium text-[var(--text-primary)]">{project.name}</span>
+                {project.client_name && (
+                  <span className="badge">{project.client_name}</span>
+                )}
+                {project.archived && (
+                  <span className="badge text-[var(--warning)]">Archiviato</span>
+                )}
+              </div>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => startEdit(project)}
+                  className="btn btn-ghost btn-icon"
+                  title="Modifica"
+                >
+                  <PencilIcon />
+                </button>
+                <button
+                  onClick={() => archive(project)}
+                  className="btn btn-ghost btn-icon"
+                  title={project.archived ? 'Ripristina' : 'Archivia'}
+                >
+                  <ArchiveIcon />
+                </button>
+                <button
+                  onClick={() => handleDelete(project.id)}
+                  className="btn btn-ghost btn-icon text-[var(--error)] hover:bg-[var(--error-muted)]"
+                  title="Elimina"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
             </div>
-          </div>
+          )
         ))}
+
+        {/* Empty state */}
         {filteredProjects.length === 0 && (
-          <p className="text-gray-500 text-center py-8">Nessun progetto trovato</p>
+          <div className="flex flex-col items-center justify-center py-16 text-[var(--text-muted)]">
+            <FolderIcon />
+            <p className="mt-4 text-lg">Nessun progetto trovato</p>
+            <p className="text-sm mt-1">
+              {search || filterClientId ? 'Prova a modificare i filtri' : 'Crea il tuo primo progetto'}
+            </p>
+          </div>
         )}
       </div>
     </div>

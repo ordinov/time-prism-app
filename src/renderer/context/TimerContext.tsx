@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import type { ProjectWithClient } from '@shared/types'
+import { events, SESSION_CREATED } from '../lib/events'
 
 interface TimerState {
   isRunning: boolean
@@ -86,6 +87,9 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       start_at: state.startTime.toISOString(),
       end_at: endTime.toISOString()
     })
+
+    // Notify listeners that a session was created
+    events.emit(SESSION_CREATED)
 
     setState({
       isRunning: false,

@@ -28,11 +28,21 @@ export function getViewStartEnd(date: Date, mode: ViewMode): { start: Date; end:
   return { start, end }
 }
 
-export function getHoursInView(mode: ViewMode): number {
+export function getHoursInView(mode: ViewMode, date?: Date): number {
   switch (mode) {
-    case 'day': return 24
-    case 'week': return 24 * 7
-    case 'month': return 24 * 31
+    case 'day':
+      return 24
+    case 'week':
+      return 24 * 7
+    case 'month':
+      // Calculate actual days in the month
+      if (date) {
+        const year = date.getFullYear()
+        const month = date.getMonth()
+        const daysInMonth = new Date(year, month + 1, 0).getDate()
+        return 24 * daysInMonth
+      }
+      return 24 * 31
   }
 }
 

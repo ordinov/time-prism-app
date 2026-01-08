@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { SessionWithProject, CreateSessionInput, UpdateSessionInput, SessionQuery } from '@shared/types'
+import { events, SESSION_CREATED } from '../lib/events'
 
 export function useSessions(query: SessionQuery = {}) {
   const [sessions, setSessions] = useState<SessionWithProject[]>([])
@@ -23,6 +24,12 @@ export function useSessions(query: SessionQuery = {}) {
     load()
   }, [load])
 
+  // Listen for session created events (e.g., from timer)
+  useEffect(() => {
+    const unsubscribe = events.on(SESSION_CREATED, load)
+    return unsubscribe
+  }, [load])
+
   const create = async (input: CreateSessionInput) => {
     const session = await window.api.sessions.create(input)
     await load()
@@ -40,5 +47,11 @@ export function useSessions(query: SessionQuery = {}) {
     await load()
   }
 
-  return { sessions, loading, error, create, update, remove, reload: load }
+  const removeByProject = async (projectId: number) => {
+    const count = await window.api.sessions.deleteByProject(projectId)
+    await load()
+    return count
+  }
+
+  return { sessions, loading, error, create, update, remove, removeByProject, reload: load }
 }

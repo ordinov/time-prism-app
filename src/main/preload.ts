@@ -26,6 +26,7 @@ const api = {
     create: (input: CreateSessionInput): Promise<Session> => ipcRenderer.invoke('db:sessions:create', input),
     update: (input: UpdateSessionInput): Promise<Session> => ipcRenderer.invoke('db:sessions:update', input),
     delete: (id: number): Promise<void> => ipcRenderer.invoke('db:sessions:delete', id),
+    deleteByProject: (projectId: number): Promise<number> => ipcRenderer.invoke('db:sessions:deleteByProject', projectId),
   },
   backup: {
     create: (): Promise<string> => ipcRenderer.invoke('backup:create'),
