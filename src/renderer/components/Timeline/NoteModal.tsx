@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { formatTimeRange } from './utils'
 
 interface Props {
@@ -32,6 +32,12 @@ export default function NoteModal({
     }
   }, [isOpen, sessionId, currentNote])
 
+  const handleSave = useCallback(() => {
+    const trimmedNote = note.trim()
+    onSave(sessionId, trimmedNote || null)
+    onClose()
+  }, [note, sessionId, onSave, onClose])
+
   // Handle keyboard shortcuts
   useEffect(() => {
     if (!isOpen) return
@@ -46,13 +52,7 @@ export default function NoteModal({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, note])
-
-  const handleSave = () => {
-    const trimmedNote = note.trim()
-    onSave(sessionId, trimmedNote || null)
-    onClose()
-  }
+  }, [isOpen, onClose, handleSave])
 
   if (!isOpen) return null
 
