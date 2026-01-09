@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import type { SessionWithProject } from '@shared/types'
 import { dateToPosition, positionToDate, snapToGrid, formatTimeRange, formatDuration } from './utils'
 import SessionTooltip from './SessionTooltip'
+import NoteModal from './NoteModal'
 
 // Icons
 const XMarkIcon = () => (
@@ -25,6 +26,7 @@ interface Props {
   onCreateSession: (projectId: number, startAt: Date, endAt: Date) => void
   onUpdateSession: (sessionId: number, startAt: Date, endAt: Date) => void
   onDeleteSession: (sessionId: number) => void
+  onUpdateSessionNote: (sessionId: number, notes: string | null) => void
   onRemoveTrack: (projectId: number) => void
 }
 
@@ -43,6 +45,7 @@ export default function TimelineTrack({
   onCreateSession,
   onUpdateSession,
   onDeleteSession,
+  onUpdateSessionNote,
   onRemoveTrack
 }: Props) {
   const trackRef = useRef<HTMLDivElement>(null)
@@ -81,6 +84,11 @@ export default function TimelineTrack({
     y: number
   } | null>(null)
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Note modal state
+  const [noteModal, setNoteModal] = useState<{
+    session: SessionWithProject
+  } | null>(null)
 
   // Cleanup tooltip timeout on unmount
   useEffect(() => {
@@ -440,10 +448,26 @@ export default function TimelineTrack({
       {contextMenu && (
         <div
           className="fixed z-50 bg-[var(--bg-elevated)] border border-[var(--border-subtle)]
-                     rounded-lg shadow-xl py-1 min-w-32"
+                     rounded-lg shadow-xl py-1 min-w-40"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            className="w-full px-3 py-1.5 text-sm text-left text-[var(--text-primary)]
+                       hover:bg-[var(--bg-surface)] transition-colors"
+            onClick={() => {
+              const session = sessions.find(s => s.id === contextMenu.sessionId)
+              if (session) {
+                setNoteModal({ session })
+              }
+              setContextMenu(null)
+            }}
+          >
+            {sessions.find(s => s.id === contextMenu.sessionId)?.notes
+              ? 'Modifica nota'
+              : 'Aggiungi nota'}
+          </button>
+          <div className="h-px bg-[var(--border-subtle)] my-1" />
           <button
             className="w-full px-3 py-1.5 text-sm text-left text-[var(--error)]
                        hover:bg-[var(--error)]/10 transition-colors"
@@ -464,6 +488,19 @@ export default function TimelineTrack({
           endAt={tooltip.session.end_at}
           notes={tooltip.session.notes}
           position={{ x: tooltip.x, y: tooltip.y }}
+        />
+      )}
+
+      {/* Note Modal */}
+      {noteModal && (
+        <NoteModal
+          isOpen={true}
+          sessionId={noteModal.session.id}
+          startAt={noteModal.session.start_at}
+          endAt={noteModal.session.end_at}
+          currentNote={noteModal.session.notes}
+          onSave={onUpdateSessionNote}
+          onClose={() => setNoteModal(null)}
         />
       )}
     </div>
