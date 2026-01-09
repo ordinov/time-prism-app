@@ -5,7 +5,7 @@ import type {
   CreateProjectInput, UpdateProjectInput,
   CreateSessionInput, UpdateSessionInput,
   SessionQuery, ProjectWithClient, SessionWithProject,
-  SettingsMap
+  SettingsMap, BackupInfo, RestoreResult
 } from '../shared/types'
 
 const api = {
@@ -31,8 +31,10 @@ const api = {
   },
   backup: {
     create: (): Promise<string> => ipcRenderer.invoke('backup:create'),
-    list: (): Promise<{ name: string; date: Date }[]> => ipcRenderer.invoke('backup:list'),
-    restore: (name: string): Promise<void> => ipcRenderer.invoke('backup:restore', name),
+    createManual: (): Promise<string> => ipcRenderer.invoke('backup:createManual'),
+    list: (): Promise<BackupInfo[]> => ipcRenderer.invoke('backup:list'),
+    restore: (name: string): Promise<RestoreResult> => ipcRenderer.invoke('backup:restore', name),
+    delete: (names: string[]): Promise<void> => ipcRenderer.invoke('backup:delete', names),
     export: (): Promise<string | null> => ipcRenderer.invoke('backup:export'),
     import: (): Promise<boolean> => ipcRenderer.invoke('backup:import'),
   },
