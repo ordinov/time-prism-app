@@ -53,6 +53,13 @@ function calculateHours(startAt: string, endAt: string): number {
   return (end - start) / (1000 * 60 * 60)
 }
 
+function formatHours(hours: number): string {
+  const totalMinutes = Math.round(hours * 60)
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  return `${h}:${m.toString().padStart(2, '0')}`
+}
+
 function calculateDays(hours: number): number {
   return hours / 8
 }
@@ -520,7 +527,7 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
                   <td className="min-w-[80px]">{renderCell(session, 'end')}</td>
                   <td className="min-w-[150px]">{renderCell(session, 'notes')}</td>
                   <td className="px-3 py-2 text-right font-mono text-[var(--text-secondary)] bg-[var(--bg-overlay)]">
-                    {hours.toFixed(2)}
+                    {formatHours(hours)}
                   </td>
                   <td className="px-3 py-2 text-right font-mono text-[var(--text-secondary)] bg-[var(--bg-overlay)]">
                     {days.toFixed(2)}
