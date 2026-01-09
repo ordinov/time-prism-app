@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { ProjectWithClient, CreateProjectInput, UpdateProjectInput } from '@shared/types'
+import type { ProjectWithStats, CreateProjectInput, UpdateProjectInput } from '@shared/types'
+import { projectService } from '../services/projectService'
 
 export function useProjects(includeArchived = false) {
-  const [projects, setProjects] = useState<ProjectWithClient[]>([])
+  const [projects, setProjects] = useState<ProjectWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await window.api.projects.list(includeArchived)
+      const data = await projectService.list(includeArchived)
       setProjects(data)
       setError(null)
     } catch (e) {
@@ -24,24 +25,25 @@ export function useProjects(includeArchived = false) {
   }, [load])
 
   const create = async (input: CreateProjectInput) => {
-    const project = await window.api.projects.create(input)
+    const project = await projectService.create(input)
     await load()
     return project
   }
 
   const update = async (input: UpdateProjectInput) => {
-    const project = await window.api.projects.update(input)
+    const project = await projectService.update(input)
     await load()
     return project
   }
 
   const remove = async (id: number) => {
-    await window.api.projects.delete(id)
+    await projectService.delete(id)
     await load()
   }
 
-  const archive = async (project: ProjectWithClient) => {
-    await update({ ...project, archived: !project.archived })
+  const archive = async (project: ProjectWithStats) => {
+    await projectService.toggleArchive(project)
+    await load()
   }
 
   return { projects, loading, error, create, update, remove, archive, reload: load }

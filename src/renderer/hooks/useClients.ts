@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { Client, CreateClientInput, UpdateClientInput } from '@shared/types'
+import { clientService } from '../services/clientService'
 
 export function useClients() {
   const [clients, setClients] = useState<Client[]>([])
@@ -9,7 +10,7 @@ export function useClients() {
   const load = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await window.api.clients.list()
+      const data = await clientService.list()
       setClients(data)
       setError(null)
     } catch (e) {
@@ -24,19 +25,19 @@ export function useClients() {
   }, [load])
 
   const create = async (input: CreateClientInput): Promise<Client> => {
-    const client = await window.api.clients.create(input)
+    const client = await clientService.create(input)
     await load()
     return client
   }
 
   const update = async (input: UpdateClientInput): Promise<Client> => {
-    const client = await window.api.clients.update(input)
+    const client = await clientService.update(input)
     await load()
     return client
   }
 
   const remove = async (id: number): Promise<void> => {
-    await window.api.clients.delete(id)
+    await clientService.delete(id)
     await load()
   }
 
