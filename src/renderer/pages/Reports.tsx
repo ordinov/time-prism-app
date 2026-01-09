@@ -153,7 +153,7 @@ export default function Reports() {
       {/* Tab content */}
       {tab === 'tracker' ? (
         <div className="grid grid-cols-2 gap-6">
-          <div className="card">
+          <div className="card p-4">
             <h2 className="text-lg font-semibold mb-3">Riepilogo per Progetto</h2>
             <table className="w-full">
               <thead>
@@ -183,7 +183,7 @@ export default function Reports() {
             </table>
           </div>
 
-          <div className="card">
+          <div className="card p-4">
             <h2 className="text-lg font-semibold mb-3">Riepilogo per Data</h2>
             <table className="w-full">
               <thead>
