@@ -43,6 +43,12 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_sessions_start_at ON sessions(start_at);
     CREATE INDEX IF NOT EXISTS idx_sessions_project_id ON sessions(project_id);
     CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects(client_id);
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
   `)
 
   // Migration: add notes column if not exists

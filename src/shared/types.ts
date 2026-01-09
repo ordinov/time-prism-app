@@ -80,3 +80,12 @@ export interface SessionQuery {
   end_date?: string
   project_id?: number
 }
+
+// Settings
+export interface Setting {
+  key: string
+  value: string
+  updated_at: string
+}
+
+export type SettingsMap = Record<string, string>

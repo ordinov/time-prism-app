@@ -6,12 +6,16 @@ import TrackRemovalModal from './TrackRemovalModal'
 import SearchableProjectSelect from './SearchableProjectSelect'
 import { useSessions } from '../../hooks/useSessions'
 import { useProjects } from '../../hooks/useProjects'
+import { useSettings } from '../../hooks/useSettings'
 import type { ViewMode } from './utils'
 import { getViewStartEnd, getHoursInView, dateToPosition } from './utils'
 
 const BASE_PIXELS_PER_HOUR = 60
 const MAX_ZOOM = 4
-const SIDEBAR_WIDTH = 176 // w-44 = 11rem = 176px
+const DEFAULT_SIDEBAR_WIDTH = 176
+const MIN_SIDEBAR_WIDTH = 120
+const MAX_SIDEBAR_WIDTH = 300
+const SETTINGS_KEY_SIDEBAR_WIDTH = 'timeline.sidebarWidth'
 
 const STORAGE_KEY_ACTIVE = 'timeline:activeProjectIds'
 const STORAGE_KEY_REMOVED = 'timeline:removedProjectIds'
@@ -36,6 +40,11 @@ export default function Timeline() {
   const [now, setNow] = useState(new Date())
   const [removalModal, setRemovalModal] = useState<{ projectId: number } | null>(null)
 
+  // Sidebar resize state
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
+  const [isResizing, setIsResizing] = useState(false)
+  const { settings, loading: settingsLoading, setSetting } = useSettings()
+
   // Persist active/removed project IDs to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_ACTIVE, JSON.stringify(activeProjectIds))
@@ -44,6 +53,16 @@ export default function Timeline() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_REMOVED, JSON.stringify(removedProjectIds))
   }, [removedProjectIds])
+
+  // Load sidebar width from settings
+  useEffect(() => {
+    if (!settingsLoading && settings[SETTINGS_KEY_SIDEBAR_WIDTH]) {
+      const savedWidth = parseInt(settings[SETTINGS_KEY_SIDEBAR_WIDTH], 10)
+      if (!isNaN(savedWidth) && savedWidth >= MIN_SIDEBAR_WIDTH && savedWidth <= MAX_SIDEBAR_WIDTH) {
+        setSidebarWidth(savedWidth)
+      }
+    }
+  }, [settingsLoading, settings])
 
   // Destructure for convenience
   const { zoom, scrollLeft } = viewState
@@ -62,7 +81,7 @@ export default function Timeline() {
   const totalWidth = hoursInView * pixelsPerHour
 
   // Calculate minimum zoom so timeline fills the available width
-  const availableWidth = Math.max(containerWidth - SIDEBAR_WIDTH, 100)
+  const availableWidth = Math.max(containerWidth - sidebarWidth, 100)
   const minZoom = availableWidth / (hoursInView * BASE_PIXELS_PER_HOUR)
 
   // Track container width
@@ -107,12 +126,15 @@ export default function Timeline() {
     }
   }, [totalWidth, availableWidth, scrollLeft])
 
-  const { sessions, create, update, remove, removeByProject } = useSessions({
+  const { sessions, loading: sessionsLoading, create, update, remove, removeByProject } = useSessions({
     start_date: viewStart.toISOString(),
     end_date: viewEnd.toISOString()
   })
 
-  const { projects } = useProjects()
+  const { projects, loading: projectsLoading } = useProjects()
+
+  // Unified loading state
+  const isLoading = settingsLoading || sessionsLoading || projectsLoading
 
   // Add projects that have sessions in view
   // If a project has new sessions, remove it from removedProjectIds so it shows again
@@ -235,7 +257,7 @@ export default function Timeline() {
       const container = containerRef.current
       if (container) {
         const rect = container.getBoundingClientRect()
-        const mouseXInTimeline = e.clientX - rect.left - SIDEBAR_WIDTH
+        const mouseXInTimeline = e.clientX - rect.left - sidebarWidth
         zoomAtPosition(e.deltaY < 0, mouseXInTimeline)
       }
     } else {
@@ -245,7 +267,7 @@ export default function Timeline() {
         scrollLeft: Math.max(0, Math.min(prev.scrollLeft + e.deltaY, maxScroll))
       }))
     }
-  }, [totalWidth, availableWidth, zoomAtPosition])
+  }, [totalWidth, availableWidth, zoomAtPosition, sidebarWidth])
 
   useEffect(() => {
     const container = containerRef.current
@@ -270,7 +292,8 @@ export default function Timeline() {
       id: sessionId,
       project_id: session.project_id,
       start_at: startAt.toISOString(),
-      end_at: endAt.toISOString()
+      end_at: endAt.toISOString(),
+      notes: session.notes
     })
   }
 
@@ -281,15 +304,23 @@ export default function Timeline() {
   }
 
   const handleUpdateSessionNote = async (sessionId: number, notes: string | null) => {
+    console.log('[DEBUG] handleUpdateSessionNote called:', { sessionId, notes })
     const session = sessions.find(s => s.id === sessionId)
-    if (!session) return
-    await update({
+    console.log('[DEBUG] Found session:', session)
+    if (!session) {
+      console.log('[DEBUG] Session not found!')
+      return
+    }
+    const input = {
       id: sessionId,
       project_id: session.project_id,
       start_at: session.start_at,
       end_at: session.end_at,
       notes
-    })
+    }
+    console.log('[DEBUG] Calling update with:', input)
+    await update(input)
+    console.log('[DEBUG] Update completed')
   }
 
   const handleAddProject = (projectId: number) => {
@@ -322,6 +353,36 @@ export default function Timeline() {
   const availableProjects = projects.filter(p => !activeProjectIds.includes(p.id) && !p.archived)
   const activeProjects = projects.filter(p => activeProjectIds.includes(p.id))
 
+  // Sidebar resize handlers
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [])
+
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = containerRef.current
+      if (!container) return
+      const rect = container.getBoundingClientRect()
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, e.clientX - rect.left))
+      setSidebarWidth(newWidth)
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      setSetting(SETTINGS_KEY_SIDEBAR_WIDTH, String(sidebarWidth))
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, setSetting, sidebarWidth])
+
   // Get the project being removed for the modal
   const removalProject = removalModal
     ? projects.find(p => p.id === removalModal.projectId)
@@ -329,6 +390,23 @@ export default function Timeline() {
   const removalSessionCount = removalModal
     ? sessions.filter(s => s.project_id === removalModal.projectId).length
     : 0
+
+  // Show loader while data is loading
+  if (isLoading) {
+    return (
+      <div className="h-full flex flex-col gap-4">
+        <div className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-xl
+                       border border-[var(--border-subtle)] overflow-hidden">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-2 border-[var(--prism-violet)] border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-[var(--text-muted)]">Caricamento...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -352,7 +430,16 @@ export default function Timeline() {
 
       {/* Ruler */}
       <div className="flex">
-        <div className="w-44 flex-shrink-0 bg-[var(--bg-elevated)] border-r border-[var(--border-subtle)] relative z-10" />
+        <div
+          className="flex-shrink-0 bg-[var(--bg-elevated)] border-r border-[var(--border-subtle)] relative z-10"
+          style={{ width: sidebarWidth }}
+        />
+        {/* Resize handle */}
+        <div
+          className={`w-1 flex-shrink-0 cursor-col-resize hover:bg-[var(--prism-violet)]/50 transition-colors z-20
+                     ${isResizing ? 'bg-[var(--prism-violet)]' : 'bg-transparent'}`}
+          onMouseDown={handleResizeStart}
+        />
         <div className="flex-1 overflow-hidden">
           <TimelineRuler
             viewStart={viewStart}
@@ -381,6 +468,7 @@ export default function Timeline() {
             scrollLeft={scrollLeft}
             gridLines={gridLines}
             nowPosition={nowPosition}
+            sidebarWidth={sidebarWidth}
             onCreateSession={handleCreateSession}
             onUpdateSession={handleUpdateSession}
             onDeleteSession={handleDeleteSession}

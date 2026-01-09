@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { APP_NAME, APP_VERSION } from '../lib/config'
 
 // SVG Icons as components
 const ClockIcon = () => (
@@ -115,7 +116,7 @@ export default function Sidebar() {
       {/* Bottom section - version indicator */}
       <div className="py-4 flex justify-center">
         <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-disabled)]"
-             title="Time Prism v0.1.0" />
+             title={`${APP_NAME} v${APP_VERSION}`} />
       </div>
     </nav>
   )

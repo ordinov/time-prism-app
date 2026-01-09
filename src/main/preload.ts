@@ -4,7 +4,8 @@ import type {
   CreateClientInput, UpdateClientInput,
   CreateProjectInput, UpdateProjectInput,
   CreateSessionInput, UpdateSessionInput,
-  SessionQuery, ProjectWithClient, SessionWithProject
+  SessionQuery, ProjectWithClient, SessionWithProject,
+  SettingsMap
 } from '../shared/types'
 
 const api = {
@@ -34,6 +35,11 @@ const api = {
     restore: (name: string): Promise<void> => ipcRenderer.invoke('backup:restore', name),
     export: (): Promise<string | null> => ipcRenderer.invoke('backup:export'),
     import: (): Promise<boolean> => ipcRenderer.invoke('backup:import'),
+  },
+  settings: {
+    getAll: (): Promise<SettingsMap> => ipcRenderer.invoke('db:settings:getAll'),
+    get: (key: string): Promise<string | null> => ipcRenderer.invoke('db:settings:get', key),
+    set: (key: string, value: string): Promise<void> => ipcRenderer.invoke('db:settings:set', key, value),
   }
 }
 

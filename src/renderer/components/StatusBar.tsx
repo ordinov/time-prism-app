@@ -1,5 +1,6 @@
 import { useTimer } from '../context/TimerContext'
 import { useProjects } from '../hooks/useProjects'
+import { APP_NAME, APP_VERSION } from '../lib/config'
 
 // Icons
 const PlayIcon = () => (
@@ -98,7 +99,7 @@ export default function StatusBar() {
       <div className="flex items-center gap-3">
         <div className="h-4 w-px bg-[var(--border-subtle)]" />
         <span className="text-[var(--text-disabled)] text-xs font-medium">
-          Time Prism v0.1.0
+          {APP_NAME} v{APP_VERSION}
         </span>
       </div>
     </div>

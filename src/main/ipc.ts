@@ -6,7 +6,8 @@ import type {
   CreateClientInput, UpdateClientInput,
   CreateProjectInput, UpdateProjectInput,
   CreateSessionInput, UpdateSessionInput,
-  SessionQuery, ProjectWithClient, SessionWithProject
+  SessionQuery, ProjectWithClient, SessionWithProject,
+  Setting, SettingsMap
 } from '../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -160,5 +161,30 @@ export function registerIpcHandlers(): void {
       return true
     }
     return false
+  })
+
+  // Settings
+  ipcMain.handle('db:settings:getAll', (): SettingsMap => {
+    const db = getDatabase()
+    const rows = db.prepare('SELECT key, value FROM settings').all() as Setting[]
+    const map: SettingsMap = {}
+    for (const row of rows) {
+      map[row.key] = row.value
+    }
+    return map
+  })
+
+  ipcMain.handle('db:settings:get', (_, key: string): string | null => {
+    const db = getDatabase()
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined
+    return row?.value ?? null
+  })
+
+  ipcMain.handle('db:settings:set', (_, key: string, value: string): void => {
+    const db = getDatabase()
+    db.prepare(`
+      INSERT INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+    `).run(key, value)
   })
 }

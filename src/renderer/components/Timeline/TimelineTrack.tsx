@@ -23,6 +23,7 @@ interface Props {
   scrollLeft: number
   gridLines: number[]
   nowPosition: number | null
+  sidebarWidth: number
   onCreateSession: (projectId: number, startAt: Date, endAt: Date) => void
   onUpdateSession: (sessionId: number, startAt: Date, endAt: Date) => void
   onDeleteSession: (sessionId: number) => void
@@ -42,6 +43,7 @@ export default function TimelineTrack({
   scrollLeft,
   gridLines,
   nowPosition,
+  sidebarWidth,
   onCreateSession,
   onUpdateSession,
   onDeleteSession,
@@ -313,9 +315,9 @@ export default function TimelineTrack({
     <div className="flex border-b border-[var(--border-subtle)] group/track hover:bg-white/[0.02] transition-colors">
       {/* Project label */}
       <div
-        className="w-44 flex-shrink-0 py-2 pr-3 pl-2 bg-[var(--bg-elevated)] border-r border-[var(--border-subtle)]
+        className="flex-shrink-0 py-2 pr-3 pl-2 bg-[var(--bg-elevated)] border-r border-[var(--border-subtle)]
                    flex items-center gap-2 relative z-10"
-        style={{ borderLeft: `4px solid ${projectColor}` }}
+        style={{ width: sidebarWidth, borderLeft: `4px solid ${projectColor}` }}
       >
         <button
           onClick={() => onRemoveTrack(projectId)}
