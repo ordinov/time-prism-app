@@ -82,6 +82,26 @@ export default function TimelineTrack({
   } | null>(null)
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Cleanup tooltip timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  // Hide tooltip when drag/resize/move starts
+  useEffect(() => {
+    if (isDragging || resizing || moving) {
+      if (tooltipTimeoutRef.current) {
+        clearTimeout(tooltipTimeoutRef.current)
+        tooltipTimeoutRef.current = null
+      }
+      setTooltip(null)
+    }
+  }, [isDragging, resizing, moving])
+
   // Close context menu on click outside
   useEffect(() => {
     if (!contextMenu) return
@@ -250,6 +270,9 @@ export default function TimelineTrack({
 
   // Tooltip handlers
   const handleSessionMouseEnter = (e: React.MouseEvent, session: SessionWithProject) => {
+    // Don't show tooltip during drag operations
+    if (isDragging || resizing || moving) return
+
     const rect = e.currentTarget.getBoundingClientRect()
     tooltipTimeoutRef.current = setTimeout(() => {
       setTooltip({
