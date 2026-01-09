@@ -208,8 +208,8 @@ export default function StatusBar() {
             </div>
 
             {/* Start hint */}
-            <span className="text-[var(--text-muted)] text-sm">
-              Seleziona un progetto per iniziare
+            <span className="text-[var(--text-muted)] text-sm whitespace-nowrap">
+              Crea una sessione in realtime - minimo 00:01
             </span>
           </>
         )}

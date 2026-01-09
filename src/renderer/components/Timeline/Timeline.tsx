@@ -4,11 +4,37 @@ import TimelineRuler from './TimelineRuler'
 import TimelineTrack from './TimelineTrack'
 import TrackRemovalModal from './TrackRemovalModal'
 import SearchableProjectSelect from './SearchableProjectSelect'
+import SearchableSelect, { type SelectOption } from '../SearchableSelect'
 import { useSessions } from '../../hooks/useSessions'
 import { useProjects } from '../../hooks/useProjects'
 import { useSettings } from '../../hooks/useSettings'
 import type { ViewMode } from './utils'
 import { getViewStartEnd, getHoursInView, dateToPosition } from './utils'
+
+// Filter icons
+const ClientIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+  </svg>
+)
+
+const ProjectIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+  </svg>
+)
+
+const ClearFiltersIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
+
+const SearchIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+  </svg>
+)
 
 const BASE_PIXELS_PER_HOUR = 60
 const MAX_ZOOM = 4
@@ -32,10 +58,28 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 interface Props {
   currentDate: Date
   onDateChange: (date: Date) => void
+  clientFilter?: string | null
+  projectFilter?: number | null
+  onClientFilterChange?: (value: string | null) => void
+  onProjectFilterChange?: (value: number | null) => void
+  clientOptions?: SelectOption[]
+  projectOptions?: SelectOption[]
 }
 
-export default function Timeline({ currentDate, onDateChange }: Props) {
+export default function Timeline({
+  currentDate,
+  onDateChange,
+  clientFilter,
+  projectFilter,
+  onClientFilterChange,
+  onProjectFilterChange,
+  clientOptions = [],
+  projectOptions = []
+}: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('day')
+  const [textSearch, setTextSearch] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   // Combined state for atomic updates - prevents jumpy zoom
   const [viewState, setViewState] = useState({ zoom: 1, scrollLeft: 0 })
   const [activeProjectIds, setActiveProjectIds] = useState<number[]>(() => loadFromStorage(STORAGE_KEY_ACTIVE, []))
@@ -136,6 +180,64 @@ export default function Timeline({ currentDate, onDateChange }: Props) {
   })
 
   const { projects, loading: projectsLoading } = useProjects()
+
+  // Apply filters to sessions
+  const filteredSessions = useMemo(() => {
+    return sessions.filter(s => {
+      if (clientFilter && s.client_name !== clientFilter) return false
+      if (projectFilter && s.project_id !== projectFilter) return false
+      if (textSearch) {
+        const searchLower = textSearch.toLowerCase()
+        const matchesClient = s.client_name?.toLowerCase().includes(searchLower)
+        const matchesProject = s.project_name.toLowerCase().includes(searchLower)
+        if (!matchesClient && !matchesProject) return false
+      }
+      return true
+    })
+  }, [sessions, clientFilter, projectFilter, textSearch])
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [isSearchOpen])
+
+  // Build filter options from local sessions if not provided
+  const localClientOptions: SelectOption[] = useMemo(() => {
+    if (clientOptions.length > 0) return clientOptions
+    const uniqueClients = new Map<string, string>()
+    sessions.forEach(s => {
+      if (s.client_name && !uniqueClients.has(s.client_name)) {
+        uniqueClients.set(s.client_name, s.client_name)
+      }
+    })
+    return Array.from(uniqueClients.values())
+      .sort((a, b) => a.localeCompare(b))
+      .map(name => ({ value: name, label: name }))
+  }, [sessions, clientOptions])
+
+  const localProjectOptions: SelectOption[] = useMemo(() => {
+    if (projectOptions.length > 0) return projectOptions
+    const uniqueProjects = new Map<number, { name: string; color: string; client: string | null }>()
+    sessions.forEach(s => {
+      if (!uniqueProjects.has(s.project_id)) {
+        uniqueProjects.set(s.project_id, {
+          name: s.project_name,
+          color: s.project_color,
+          client: s.client_name
+        })
+      }
+    })
+    return Array.from(uniqueProjects.entries())
+      .sort((a, b) => a[1].name.localeCompare(b[1].name))
+      .map(([id, p]) => ({
+        value: id,
+        label: p.name,
+        sublabel: p.client || undefined,
+        color: p.color
+      }))
+  }, [sessions, projectOptions])
 
   // Unified loading state
   const isLoading = settingsLoading || sessionsLoading || projectsLoading
@@ -345,7 +447,14 @@ export default function Timeline({ currentDate, onDateChange }: Props) {
   }
 
   const availableProjects = projects.filter(p => !activeProjectIds.includes(p.id) && !p.archived)
-  const activeProjects = projects.filter(p => activeProjectIds.includes(p.id))
+
+  // Filter active projects - when filters are active, only show projects with matching sessions
+  const hasActiveFilters = clientFilter || projectFilter || textSearch
+  const projectIdsWithFilteredSessions = new Set(filteredSessions.map(s => s.project_id))
+  const activeProjects = projects.filter(p =>
+    activeProjectIds.includes(p.id) &&
+    (!hasActiveFilters || projectIdsWithFilteredSessions.has(p.id))
+  )
 
   // Sidebar resize handlers
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -423,7 +532,99 @@ export default function Timeline({ currentDate, onDateChange }: Props) {
         onViewModeChange={setViewMode}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
-      />
+      >
+        {onClientFilterChange && onProjectFilterChange && (
+          <div className="flex items-center gap-1">
+            {/* Text search */}
+            {isSearchOpen ? (
+              <div className="flex items-center gap-1">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={textSearch}
+                  onChange={e => setTextSearch(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') {
+                      setIsSearchOpen(false)
+                      if (!textSearch) setTextSearch('')
+                    }
+                  }}
+                  placeholder="Cerca..."
+                  className="w-32 px-2 py-1.5 text-sm rounded-lg
+                             bg-[var(--bg-elevated)] border border-[var(--prism-violet)]
+                             text-[var(--text-primary)] placeholder:text-[var(--text-muted)]
+                             focus:outline-none"
+                />
+                <button
+                  onClick={() => {
+                    setIsSearchOpen(false)
+                    if (!textSearch) setTextSearch('')
+                  }}
+                  className="flex items-center justify-center w-9 h-9 rounded-lg
+                             text-[var(--text-muted)] hover:text-[var(--text-primary)]
+                             transition-colors"
+                  title="Chiudi ricerca"
+                >
+                  <ClearFiltersIcon />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className={`relative flex items-center justify-center w-9 h-9 rounded-lg
+                           bg-[var(--bg-elevated)] border transition-colors cursor-pointer
+                           ${textSearch
+                             ? 'border-[var(--prism-violet)] text-[var(--prism-violet)]'
+                             : 'border-[var(--border-default)] text-[var(--text-muted)] hover:border-[var(--prism-violet)] hover:text-[var(--text-secondary)]'}`}
+                title={textSearch ? `Ricerca: ${textSearch}` : 'Cerca'}
+              >
+                <SearchIcon />
+                {textSearch && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[var(--prism-violet)] border-2 border-[var(--bg-base)]" />
+                )}
+              </button>
+            )}
+            <SearchableSelect
+              options={localClientOptions}
+              value={clientFilter ?? null}
+              onChange={(v) => onClientFilterChange(v as string | null)}
+              placeholder="Cliente"
+              searchPlaceholder="Cerca cliente..."
+              emptyMessage="Nessun cliente"
+              alignRight
+              iconOnly
+              icon={<ClientIcon />}
+            />
+            <SearchableSelect
+              options={localProjectOptions}
+              value={projectFilter ?? null}
+              onChange={(v) => onProjectFilterChange(v as number | null)}
+              placeholder="Progetto"
+              searchPlaceholder="Cerca progetto..."
+              emptyMessage="Nessun progetto"
+              alignRight
+              iconOnly
+              icon={<ProjectIcon />}
+            />
+            {(clientFilter || projectFilter || textSearch) && (
+              <button
+                onClick={() => {
+                  onClientFilterChange(null)
+                  onProjectFilterChange(null)
+                  setTextSearch('')
+                  setIsSearchOpen(false)
+                }}
+                className="flex items-center justify-center w-9 h-9 rounded-lg
+                           text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error)]/10
+                           transition-colors"
+                title="Pulisci filtri"
+              >
+                <ClearFiltersIcon />
+              </button>
+            )}
+          </div>
+        )}
+      </TimelineHeader>
 
       {/* Content area with resize handle */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
@@ -462,7 +663,7 @@ export default function Timeline({ currentDate, onDateChange }: Props) {
               projectName={project.name}
               projectColor={project.color}
               clientName={project.client_name}
-              sessions={sessions.filter(s => s.project_id === project.id)}
+              sessions={filteredSessions.filter(s => s.project_id === project.id)}
               viewStart={viewStart}
               pixelsPerHour={pixelsPerHour}
               totalWidth={totalWidth}

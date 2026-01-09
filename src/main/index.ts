@@ -3,6 +3,7 @@ import path from 'path'
 import { initDatabase, closeDatabase } from './database'
 import { registerIpcHandlers } from './ipc'
 import { startBackupScheduler, stopBackupScheduler } from './backup-scheduler'
+import { initAutoUpdater, registerAutoUpdaterIpc } from './auto-updater'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -43,11 +44,17 @@ function createWindow(): void {
 app.whenReady().then(() => {
   initDatabase()
   registerIpcHandlers()
+  registerAutoUpdaterIpc()
 
   // Start backup scheduler (handles missed backups automatically)
   startBackupScheduler()
 
   createWindow()
+
+  // Initialize auto-updater after window is ready
+  if (mainWindow) {
+    initAutoUpdater(mainWindow)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

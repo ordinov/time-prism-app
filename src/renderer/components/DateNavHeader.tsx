@@ -235,7 +235,7 @@ export default function DateNavHeader({
       </div>
 
       {/* Right: View mode toggle */}
-      <div className="flex p-1 rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)]">
+      <div className="flex p-1 ml-4 rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)]">
         {viewModes.map(({ mode, label }) => (
           <button
             key={mode}

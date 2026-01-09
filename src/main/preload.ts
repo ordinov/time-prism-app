@@ -4,7 +4,7 @@ import type {
   CreateClientInput, UpdateClientInput,
   CreateProjectInput, UpdateProjectInput,
   CreateSessionInput, UpdateSessionInput,
-  SessionQuery, ProjectWithClient, SessionWithProject,
+  SessionQuery, ProjectWithStats, SessionWithProject,
   SettingsMap, BackupInfo, RestoreResult, BackupConfig
 } from '../shared/types'
 
@@ -16,7 +16,7 @@ const api = {
     delete: (id: number): Promise<void> => ipcRenderer.invoke('db:clients:delete', id),
   },
   projects: {
-    list: (includeArchived?: boolean): Promise<ProjectWithClient[]> =>
+    list: (includeArchived?: boolean): Promise<ProjectWithStats[]> =>
       ipcRenderer.invoke('db:projects:list', includeArchived),
     create: (input: CreateProjectInput): Promise<Project> => ipcRenderer.invoke('db:projects:create', input),
     update: (input: UpdateProjectInput): Promise<Project> => ipcRenderer.invoke('db:projects:update', input),
@@ -48,6 +48,21 @@ const api = {
     getAll: (): Promise<SettingsMap> => ipcRenderer.invoke('db:settings:getAll'),
     get: (key: string): Promise<string | null> => ipcRenderer.invoke('db:settings:get', key),
     set: (key: string, value: string): Promise<void> => ipcRenderer.invoke('db:settings:set', key, value),
+  },
+  updater: {
+    check: (): Promise<{ updateAvailable: boolean; info?: unknown; error?: string }> =>
+      ipcRenderer.invoke('updater:check'),
+    download: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('updater:download'),
+    install: (): Promise<void> => ipcRenderer.invoke('updater:install'),
+    onStatus: (callback: (event: { status: string; data?: unknown }) => void) => {
+      const handler = (_: unknown, event: { status: string; data?: unknown }) => callback(event)
+      ipcRenderer.on('updater:status', handler)
+      return () => ipcRenderer.removeListener('updater:status', handler)
+    },
+  },
+  app: {
+    getVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   }
 }
 

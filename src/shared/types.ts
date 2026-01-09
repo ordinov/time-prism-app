@@ -29,6 +29,11 @@ export interface ProjectWithClient extends Project {
   client_name: string | null
 }
 
+export interface ProjectWithStats extends ProjectWithClient {
+  session_count: number
+  total_minutes: number
+}
+
 export interface SessionWithProject extends Session {
   project_name: string
   project_color: string
@@ -79,6 +84,7 @@ export interface SessionQuery {
   start_date?: string
   end_date?: string
   project_id?: number
+  includeArchived?: boolean
 }
 
 // Settings

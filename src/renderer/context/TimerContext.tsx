@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
 import type { ProjectWithClient } from '@shared/types'
 import { events, SESSION_CREATED } from '../lib/events'
+import { useToast } from './ToastContext'
 
 interface TimerState {
   isRunning: boolean
@@ -22,6 +23,7 @@ const STORAGE_KEY = 'time-prism-active-timer'
 const AUTO_SAVE_INTERVAL = 60 // seconds
 
 export function TimerProvider({ children }: { children: ReactNode }) {
+  const { showToast } = useToast()
   const [state, setState] = useState<TimerState>({
     isRunning: false,
     projectId: null,
@@ -90,6 +92,8 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           end_at: endTime.toISOString()
         }).then(() => {
           events.emit(SESSION_CREATED)
+        }).catch(() => {
+          showToast('Errore nel salvataggio automatico della sessione', 'error')
         })
       } else {
         // Create new session (first save after 1 minute)
@@ -107,10 +111,12 @@ export function TimerProvider({ children }: { children: ReactNode }) {
             sessionId: session.id
           }))
           events.emit(SESSION_CREATED)
+        }).catch(() => {
+          showToast('Errore nel salvataggio automatico della sessione', 'error')
         })
       }
     }
-  }, [state.elapsed, state.isRunning, state.startTime, state.projectId, state.projectName, state.sessionId])
+  }, [state.elapsed, state.isRunning, state.startTime, state.projectId, state.projectName, state.sessionId, showToast])
 
   const start = useCallback((project: ProjectWithClient) => {
     const startTime = new Date()
@@ -134,17 +140,28 @@ export function TimerProvider({ children }: { children: ReactNode }) {
   const stop = useCallback(async () => {
     if (!state.isRunning || !state.projectId || !state.startTime) return
 
+    // Round end time to nearest minute
     const endTime = new Date()
+    const seconds = endTime.getSeconds()
+    if (seconds >= 30) {
+      endTime.setMinutes(endTime.getMinutes() + 1)
+    }
+    endTime.setSeconds(0, 0)
 
     if (state.sessionId) {
       // Update existing session with final end time
-      await window.api.sessions.update({
-        id: state.sessionId,
-        project_id: state.projectId,
-        start_at: state.startTime.toISOString(),
-        end_at: endTime.toISOString()
-      })
-      events.emit(SESSION_CREATED)
+      try {
+        await window.api.sessions.update({
+          id: state.sessionId,
+          project_id: state.projectId,
+          start_at: state.startTime.toISOString(),
+          end_at: endTime.toISOString()
+        })
+        events.emit(SESSION_CREATED)
+        showToast('Sessione salvata', 'success')
+      } catch {
+        showToast('Errore nel salvataggio della sessione', 'error')
+      }
     }
     // If no sessionId (timer < 1 minute), don't save anything
 
@@ -157,7 +174,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
       sessionId: null
     })
     localStorage.removeItem(STORAGE_KEY)
-  }, [state])
+  }, [state, showToast])
 
   return (
     <TimerContext.Provider value={{ ...state, start, stop }}>

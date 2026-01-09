@@ -12,7 +12,10 @@
     "dev:vite": "vite",
     "dev:electron": "wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "build:electron": "electron-builder",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-rebuild",
+    "release:patch": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags"
   },
   "author": "",
   "license": "MIT",
@@ -43,9 +46,11 @@
     "wait-on": "^9.0.3"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.16",
     "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
     "better-sqlite3": "^12.5.0",
+    "electron-updater": "^6.3.9",
     "react": "^19.2.3",
     "react-datepicker": "^9.1.0",
     "react-dom": "^19.2.3",

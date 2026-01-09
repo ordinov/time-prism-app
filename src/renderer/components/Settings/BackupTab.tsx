@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { BackupInfo, BackupConfig } from '@shared/types'
+import { useToast } from '../../context/ToastContext'
 import RestoreModal from './RestoreModal'
 import DeleteBackupsModal from './DeleteBackupsModal'
 
@@ -135,6 +136,7 @@ function BackupTable({ title, backups, selected, onToggleSelect, onToggleSelectA
 }
 
 export default function BackupTab() {
+  const { showToast } = useToast()
   const [backups, setBackups] = useState<BackupInfo[]>([])
   const [config, setConfig] = useState<BackupConfig | null>(null)
   const [loading, setLoading] = useState(true)
@@ -143,7 +145,6 @@ export default function BackupTab() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [restoreTarget, setRestoreTarget] = useState<BackupInfo | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [newTime, setNewTime] = useState('')
 
   // Derived state for separate backup lists
@@ -169,25 +170,18 @@ export default function BackupTab() {
     loadData()
   }, [loadData])
 
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [toast])
-
   const handleSaveConfig = async () => {
     if (!config) return
     if (config.scheduleTimes.length === 0) {
-      setToast({ message: 'Serve almeno un orario programmato', type: 'error' })
+      showToast('Serve almeno un orario programmato', 'error')
       return
     }
     setSaving(true)
     try {
       await window.api.backup.setConfig(config)
-      setToast({ message: 'Configurazione salvata', type: 'success' })
+      showToast('Configurazione salvata', 'success')
     } catch (err) {
-      setToast({ message: 'Errore nel salvataggio', type: 'error' })
+      showToast('Errore nel salvataggio', 'error')
     } finally {
       setSaving(false)
     }
@@ -196,7 +190,7 @@ export default function BackupTab() {
   const handleAddTime = () => {
     if (!config || !newTime) return
     if (config.scheduleTimes.includes(newTime)) {
-      setToast({ message: 'Orario già presente', type: 'error' })
+      showToast('Orario già presente', 'error')
       return
     }
     setConfig({ ...config, scheduleTimes: [...config.scheduleTimes, newTime].sort() })
@@ -213,9 +207,9 @@ export default function BackupTab() {
     try {
       await window.api.backup.createManual()
       await loadData()
-      setToast({ message: 'Backup creato con successo', type: 'success' })
+      showToast('Backup creato con successo', 'success')
     } catch (err) {
-      setToast({ message: 'Errore durante la creazione del backup', type: 'error' })
+      showToast('Errore durante la creazione del backup', 'error')
     } finally {
       setCreating(false)
     }
@@ -226,24 +220,25 @@ export default function BackupTab() {
     try {
       const result = await window.api.backup.restore(restoreTarget.name)
       if (result.success) {
-        setToast({ message: `Database ripristinato. Backup di sicurezza: ${result.safetyBackupName}`, type: 'success' })
+        showToast(`Database ripristinato. Backup di sicurezza: ${result.safetyBackupName}`, 'success')
         await loadData()
       }
     } catch (err) {
-      setToast({ message: 'Errore durante il ripristino', type: 'error' })
+      showToast('Errore durante il ripristino', 'error')
     } finally {
       setRestoreTarget(null)
     }
   }
 
   const handleDelete = async () => {
+    const count = selected.size
     try {
       await window.api.backup.delete(Array.from(selected))
       setSelected(new Set())
       await loadData()
-      setToast({ message: `${selected.size} backup eliminati`, type: 'success' })
+      showToast(`${count} backup eliminati`, 'success')
     } catch (err) {
-      setToast({ message: 'Errore durante l\'eliminazione', type: 'error' })
+      showToast('Errore durante l\'eliminazione', 'error')
     } finally {
       setShowDeleteModal(false)
     }
@@ -253,10 +248,10 @@ export default function BackupTab() {
     try {
       const result = await window.api.backup.download(backupName)
       if (result) {
-        setToast({ message: 'Backup scaricato con successo', type: 'success' })
+        showToast('Backup scaricato con successo', 'success')
       }
     } catch (err) {
-      setToast({ message: 'Errore durante il download', type: 'error' })
+      showToast('Errore durante il download', 'error')
     }
   }
 
@@ -264,10 +259,10 @@ export default function BackupTab() {
     try {
       const result = await window.api.backup.downloadArchive()
       if (result) {
-        setToast({ message: 'Archivio scaricato con successo', type: 'success' })
+        showToast('Archivio scaricato con successo', 'success')
       }
     } catch (err) {
-      setToast({ message: 'Errore durante il download dell\'archivio', type: 'error' })
+      showToast('Errore durante il download dell\'archivio', 'error')
     }
   }
 
@@ -276,10 +271,10 @@ export default function BackupTab() {
       const result = await window.api.backup.uploadBackup()
       if (result) {
         await loadData()
-        setToast({ message: `Backup importato: ${result}`, type: 'success' })
+        showToast(`Backup importato: ${result}`, 'success')
       }
     } catch (err) {
-      setToast({ message: 'Errore durante l\'importazione del backup', type: 'error' })
+      showToast('Errore durante l\'importazione del backup', 'error')
     }
   }
 
@@ -288,10 +283,10 @@ export default function BackupTab() {
       const count = await window.api.backup.uploadArchive()
       if (count > 0) {
         await loadData()
-        setToast({ message: `Importati ${count} backup dall'archivio`, type: 'success' })
+        showToast(`Importati ${count} backup dall'archivio`, 'success')
       }
     } catch (err) {
-      setToast({ message: 'Errore durante l\'importazione dell\'archivio', type: 'error' })
+      showToast('Errore durante l\'importazione dell\'archivio', 'error')
     }
   }
 
@@ -351,21 +346,13 @@ export default function BackupTab() {
 
   return (
     <div className="p-6">
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 animate-fade-in
-          ${toast.type === 'success' ? 'bg-[var(--success)] text-white' : 'bg-[var(--error)] text-white'}`}>
-          {toast.message}
-        </div>
-      )}
-
       {/* Config Section */}
       <div className="card p-4 mb-6">
         <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">Backup Automatici</h3>
 
         {/* Schedule Times */}
         <div className="mb-4">
-          <label className="text-xs text-[var(--text-secondary)] block mb-2">Orari programmati</label>
+          <label className="text-xs text-[var(--text-secondary)] block mb-2">Orari programmati (se l'applicazione è chiusa sarà eseguito al primo avvio)</label>
           <div className="flex flex-wrap items-center gap-2">
             {config.scheduleTimes.map(time => (
               <span

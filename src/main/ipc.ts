@@ -7,7 +7,7 @@ import type {
   CreateClientInput, UpdateClientInput,
   CreateProjectInput, UpdateProjectInput,
   CreateSessionInput, UpdateSessionInput,
-  SessionQuery, ProjectWithClient, SessionWithProject,
+  SessionQuery, ProjectWithClient, ProjectWithStats, SessionWithProject,
   Setting, SettingsMap, BackupConfig
 } from '../shared/types'
 
@@ -36,16 +36,42 @@ export function registerIpcHandlers(): void {
   })
 
   // Projects
-  ipcMain.handle('db:projects:list', (_, includeArchived = false): ProjectWithClient[] => {
+  ipcMain.handle('db:projects:list', (_, includeArchived = false): ProjectWithStats[] => {
     const db = getDatabase()
-    const query = `
+
+    // Get projects with client names
+    const projectsQuery = `
       SELECT p.*, c.name as client_name
       FROM projects p
       LEFT JOIN clients c ON p.client_id = c.id
       ${includeArchived ? '' : 'WHERE p.archived = 0'}
       ORDER BY p.name
     `
-    return db.prepare(query).all() as ProjectWithClient[]
+    const projects = db.prepare(projectsQuery).all() as ProjectWithClient[]
+
+    // Get all sessions
+    const sessions = db.prepare('SELECT project_id, start_at, end_at FROM sessions').all() as Array<{
+      project_id: number
+      start_at: string
+      end_at: string
+    }>
+
+    // Calculate stats per project
+    const statsMap = new Map<number, { count: number; minutes: number }>()
+    for (const session of sessions) {
+      const stats = statsMap.get(session.project_id) || { count: 0, minutes: 0 }
+      const duration = (new Date(session.end_at).getTime() - new Date(session.start_at).getTime()) / (1000 * 60)
+      stats.count++
+      stats.minutes += duration
+      statsMap.set(session.project_id, stats)
+    }
+
+    // Merge stats into projects
+    return projects.map(p => ({
+      ...p,
+      session_count: statsMap.get(p.id)?.count || 0,
+      total_minutes: statsMap.get(p.id)?.minutes || 0
+    }))
   })
 
   ipcMain.handle('db:projects:create', (_, input: CreateProjectInput): Project => {
@@ -80,6 +106,11 @@ export function registerIpcHandlers(): void {
       WHERE 1=1
     `
     const params: unknown[] = []
+
+    // Exclude archived projects by default
+    if (!query.includeArchived) {
+      sql += ' AND p.archived = 0'
+    }
 
     if (query.start_date) {
       sql += ' AND s.end_at > ?'
@@ -147,16 +178,9 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('backup:download', async (_, backupName: string): Promise<string | null> => {
-    // Transform internal name to user-friendly download name
-    // From: data_2026-01-09T18-13-48-274Z.db
-    // To:   time-prism_data_2026-01-09_18-13-48.db
-    const downloadName = backupName
-      .replace(/^(data|backup|pre-restore)_/, 'time-prism_$1_')
-      .replace(/T(\d{2})-(\d{2})-(\d{2})-\d+Z\.db$/, '_$1-$2-$3.db')
-
     const result = await dialog.showSaveDialog({
       title: 'Scarica backup',
-      defaultPath: downloadName,
+      defaultPath: backupName,
       filters: [{ name: 'SQLite Database', extensions: ['db'] }]
     })
     if (!result.canceled && result.filePath) {
@@ -167,12 +191,9 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('backup:export', async (): Promise<string | null> => {
-    const now = new Date()
-    const date = now.toISOString().split('T')[0]
-    const time = now.toTimeString().slice(0, 8).replace(/:/g, '-')
     const result = await dialog.showSaveDialog({
       title: 'Esporta backup',
-      defaultPath: `time-prism_data_${date}_${time}.db`,
+      defaultPath: `time-prism-backup-${new Date().toISOString().split('T')[0]}.db`,
       filters: [{ name: 'SQLite Database', extensions: ['db'] }]
     })
     if (!result.canceled && result.filePath) {

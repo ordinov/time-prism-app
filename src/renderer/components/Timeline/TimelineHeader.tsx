@@ -49,6 +49,7 @@ interface Props {
   onViewModeChange: (mode: ViewMode) => void
   onZoomIn: () => void
   onZoomOut: () => void
+  children?: React.ReactNode
 }
 
 export default function TimelineHeader({
@@ -61,7 +62,8 @@ export default function TimelineHeader({
   onDateChange,
   onViewModeChange,
   onZoomIn,
-  onZoomOut
+  onZoomOut,
+  children
 }: Props) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0 })
@@ -236,12 +238,9 @@ export default function TimelineHeader({
         >
           <ChevronRightIcon />
         </button>
-      </div>
 
-      {/* Right: View mode & Zoom */}
-      <div className="flex items-center gap-4">
-        {/* View mode toggle */}
-        <div className="flex p-1 rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)]">
+        {/* View mode toggle - next to calendar like in Tabella view */}
+        <div className="flex p-1 ml-4 rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)]">
           {viewModes.map(({ mode, label }) => (
             <button
               key={mode}
@@ -256,6 +255,12 @@ export default function TimelineHeader({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Right: Filters & Zoom */}
+      <div className="flex items-center gap-4">
+        {/* Optional children (e.g., filters) */}
+        {children}
 
         {/* Zoom controls */}
         <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[var(--bg-base)] border border-[var(--border-subtle)]">

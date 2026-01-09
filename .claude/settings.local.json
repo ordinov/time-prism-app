@@ -45,7 +45,13 @@
       "Bash(python:*)",
       "mcp__plugin_playwright_playwright__browser_navigate",
       "mcp__plugin_playwright_playwright__browser_click",
-      "Bash(yarn add:*)"
+      "Bash(yarn add:*)",
+      "Bash(git reset:*)",
+      "Bash(git -C \"C:\\\\_apps\\\\time-prism\" log --oneline)",
+      "Bash(git -C \"C:\\\\_apps\\\\time-prism\" remote -v)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(git -C \"C:\\\\_apps\\\\time-prism\" tag)"
     ]
   }
 }
