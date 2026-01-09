@@ -411,8 +411,8 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
         )
       case 'notes':
         return (
-          <div onClick={() => startEdit(session, field)} className={cellClasses}>
-            <span className={session.notes ? '' : 'text-[var(--text-muted)]'}>
+          <div onClick={() => startEdit(session, field)} className={`${cellClasses} max-w-[200px] xl:max-w-[400px] 2xl:max-w-[600px]`}>
+            <span className={`block truncate ${session.notes ? '' : 'text-[var(--text-muted)]'}`} title={session.notes || ''}>
               {session.notes || '—'}
             </span>
           </div>
