@@ -124,23 +124,6 @@ export default function TimelineHeader({
                     bg-[var(--bg-surface)]/80 backdrop-blur-xl border-b border-[var(--border-subtle)]">
       {/* Left: Navigation */}
       <div className="flex items-center gap-2">
-        <div className="flex items-center">
-          <button
-            onClick={onPrev}
-            className="btn btn-ghost btn-icon"
-            title="Precedente"
-          >
-            <ChevronLeftIcon />
-          </button>
-          <button
-            onClick={onNext}
-            className="btn btn-ghost btn-icon"
-            title="Successivo"
-          >
-            <ChevronRightIcon />
-          </button>
-        </div>
-
         <button
           onClick={onToday}
           className="btn btn-secondary text-sm"
@@ -148,8 +131,17 @@ export default function TimelineHeader({
           Oggi
         </button>
 
+        {/* Prev arrow */}
+        <button
+          onClick={onPrev}
+          className="btn btn-ghost btn-icon"
+          title="Precedente"
+        >
+          <ChevronLeftIcon />
+        </button>
+
         {/* Date selector */}
-        <div className="relative ml-2">
+        <div className="relative">
           <button
             ref={buttonRef}
             onClick={() => setIsCalendarOpen(!isCalendarOpen)}
@@ -181,6 +173,15 @@ export default function TimelineHeader({
             document.body
           )}
         </div>
+
+        {/* Next arrow */}
+        <button
+          onClick={onNext}
+          className="btn btn-ghost btn-icon"
+          title="Successivo"
+        >
+          <ChevronRightIcon />
+        </button>
       </div>
 
       {/* Right: View mode & Zoom */}

@@ -90,23 +90,6 @@ export default function DateNavHeader({
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center">
-        <button
-          onClick={onPrev}
-          className="btn btn-ghost btn-icon"
-          title="Giorno precedente"
-        >
-          <ChevronLeftIcon />
-        </button>
-        <button
-          onClick={onNext}
-          className="btn btn-ghost btn-icon"
-          title="Giorno successivo"
-        >
-          <ChevronRightIcon />
-        </button>
-      </div>
-
       <button
         onClick={onToday}
         className="btn btn-secondary text-sm"
@@ -114,8 +97,17 @@ export default function DateNavHeader({
         Oggi
       </button>
 
+      {/* Prev arrow */}
+      <button
+        onClick={onPrev}
+        className="btn btn-ghost btn-icon"
+        title="Giorno precedente"
+      >
+        <ChevronLeftIcon />
+      </button>
+
       {/* Date selector */}
-      <div className="relative ml-2">
+      <div className="relative">
         <button
           ref={buttonRef}
           onClick={() => setIsCalendarOpen(!isCalendarOpen)}
@@ -147,6 +139,15 @@ export default function DateNavHeader({
           document.body
         )}
       </div>
+
+      {/* Next arrow */}
+      <button
+        onClick={onNext}
+        className="btn btn-ghost btn-icon"
+        title="Giorno successivo"
+      >
+        <ChevronRightIcon />
+      </button>
     </div>
   )
 }
