@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import type { SessionWithProject, ProjectWithClient } from '@shared/types'
+import ConfirmModal from './ConfirmModal'
 
 // Icons
 const TrashIcon = () => (
@@ -67,12 +68,11 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [editValue, setEditValue] = useState<string>('')
-  const [pendingDelete, setPendingDelete] = useState<number | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{ session: SessionWithProject } | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [validationError, setValidationError] = useState<number | null>(null)
 
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(null)
-  const deletePopoverRef = useRef<HTMLDivElement>(null)
 
   // Sort sessions
   const sortedSessions = useMemo(() => {
@@ -195,14 +195,11 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
       if (editingCell && inputRef.current && !inputRef.current.contains(e.target as Node)) {
         saveEdit()
       }
-      if (pendingDelete !== null && deletePopoverRef.current && !deletePopoverRef.current.contains(e.target as Node)) {
-        setPendingDelete(null)
-      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [editingCell, editValue, pendingDelete, saveEdit])
+  }, [editingCell, editValue, saveEdit])
 
   // Focus input when editing starts
   useEffect(() => {
@@ -528,38 +525,14 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
                   <td className="px-3 py-2 text-right font-mono text-[var(--text-secondary)] bg-[var(--bg-overlay)]">
                     {days.toFixed(2)}
                   </td>
-                  <td className="px-2 py-2 relative">
+                  <td className="px-2 py-2">
                     <button
-                      onClick={() => setPendingDelete(session.id)}
+                      onClick={() => setDeleteModal({ session })}
                       className="btn btn-ghost btn-icon opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--error)] transition-all"
                       title="Elimina"
                     >
                       <TrashIcon />
                     </button>
-
-                    {/* Delete confirmation popover */}
-                    {pendingDelete === session.id && (
-                      <div
-                        ref={deletePopoverRef}
-                        className="absolute right-0 top-full mt-1 z-50 bg-[var(--bg-overlay)] border border-[var(--border-default)] rounded-lg shadow-[var(--shadow-lg)] p-3 animate-scale-in"
-                      >
-                        <p className="text-sm text-[var(--text-primary)] mb-3 whitespace-nowrap">Elimina?</p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleDelete(session.id)}
-                            className="btn btn-danger text-xs py-1 px-2"
-                          >
-                            Si
-                          </button>
-                          <button
-                            onClick={() => setPendingDelete(null)}
-                            className="btn btn-ghost text-xs py-1 px-2"
-                          >
-                            No
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </td>
                 </tr>
               )
@@ -575,6 +548,20 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
           </div>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteModal && (
+        <ConfirmModal
+          isOpen={true}
+          title="Elimina sessione"
+          message={`Vuoi eliminare la sessione del ${formatDate(deleteModal.session.start_at)} (${formatTime(deleteModal.session.start_at)} - ${formatTime(deleteModal.session.end_at)})?`}
+          confirmLabel="Elimina"
+          cancelLabel="Annulla"
+          danger
+          onConfirm={() => handleDelete(deleteModal.session.id)}
+          onClose={() => setDeleteModal(null)}
+        />
+      )}
     </div>
   )
 }
