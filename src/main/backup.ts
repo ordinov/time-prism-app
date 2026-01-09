@@ -33,6 +33,27 @@ export function createBackup(): string {
   return backupPath
 }
 
+export function createManualBackup(): string {
+  const backupDir = getBackupDir()
+
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true })
+  }
+
+  const dbPath = getDbPath()
+  if (!fs.existsSync(dbPath)) {
+    throw new Error('Database file does not exist')
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const backupFileName = `backup_${timestamp}.db`
+  const backupPath = path.join(backupDir, backupFileName)
+
+  fs.copyFileSync(dbPath, backupPath)
+
+  return backupFileName
+}
+
 export function cleanOldBackups(): void {
   const backupDir = getBackupDir()
 
@@ -52,21 +73,25 @@ export function cleanOldBackups(): void {
   }
 }
 
-export function listBackups(): { name: string; date: Date }[] {
+export function listBackups(): { name: string; date: Date; size: number }[] {
   const backupDir = getBackupDir()
 
   if (!fs.existsSync(backupDir)) return []
 
   return fs.readdirSync(backupDir)
-    .filter(f => f.startsWith('data_') && f.endsWith('.db'))
-    .map(f => ({
-      name: f,
-      date: fs.statSync(path.join(backupDir, f)).mtime
-    }))
+    .filter(f => f.endsWith('.db'))
+    .map(f => {
+      const stats = fs.statSync(path.join(backupDir, f))
+      return {
+        name: f,
+        date: stats.mtime,
+        size: stats.size
+      }
+    })
     .sort((a, b) => b.date.getTime() - a.date.getTime())
 }
 
-export function restoreBackup(backupName: string): void {
+export function restoreBackup(backupName: string): { success: boolean; safetyBackupName: string } {
   const backupDir = getBackupDir()
   const backupPath = path.join(backupDir, backupName)
   const dbPath = getDbPath()
@@ -75,7 +100,26 @@ export function restoreBackup(backupName: string): void {
     throw new Error('Backup file does not exist')
   }
 
+  // Create safety backup before restore
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const safetyBackupName = `pre-restore_${timestamp}.db`
+  const safetyBackupPath = path.join(backupDir, safetyBackupName)
+
+  fs.copyFileSync(dbPath, safetyBackupPath)
   fs.copyFileSync(backupPath, dbPath)
+
+  return { success: true, safetyBackupName }
+}
+
+export function deleteBackups(names: string[]): void {
+  const backupDir = getBackupDir()
+
+  for (const name of names) {
+    const backupPath = path.join(backupDir, name)
+    if (fs.existsSync(backupPath)) {
+      fs.unlinkSync(backupPath)
+    }
+  }
 }
 
 export function exportBackup(destinationPath: string): void {
