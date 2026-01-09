@@ -280,6 +280,18 @@ export default function Timeline() {
     }
   }
 
+  const handleUpdateSessionNote = async (sessionId: number, notes: string | null) => {
+    const session = sessions.find(s => s.id === sessionId)
+    if (!session) return
+    await update({
+      id: sessionId,
+      project_id: session.project_id,
+      start_at: session.start_at,
+      end_at: session.end_at,
+      notes
+    })
+  }
+
   const handleAddProject = (projectId: number) => {
     if (!activeProjectIds.includes(projectId)) {
       setActiveProjectIds([...activeProjectIds, projectId])
@@ -373,6 +385,7 @@ export default function Timeline() {
             onUpdateSession={handleUpdateSession}
             onDeleteSession={handleDeleteSession}
             onRemoveTrack={handleRemoveTrackRequest}
+            onUpdateSessionNote={handleUpdateSessionNote}
           />
         ))}
 
