@@ -166,17 +166,50 @@ export default function DateNavHeader({
               className="fixed z-[9999] animate-scale-in"
               style={{ top: calendarPosition.top, left: calendarPosition.left }}
             >
-              <DatePicker
-                selected={currentDate}
-                onChange={(date: Date | null) => {
-                  if (date) {
-                    onDateChange(date)
-                    setIsCalendarOpen(false)
-                  }
-                }}
-                inline
-                locale="it"
-              />
+              {viewMode === 'day' && (
+                <DatePicker
+                  selected={currentDate}
+                  onChange={(date: Date | null) => {
+                    if (date) {
+                      onDateChange(date)
+                      setIsCalendarOpen(false)
+                    }
+                  }}
+                  inline
+                  locale="it"
+                />
+              )}
+              {viewMode === 'week' && (
+                <DatePicker
+                  selected={currentDate}
+                  onChange={(date: Date | null) => {
+                    if (date) {
+                      onDateChange(date)
+                      setIsCalendarOpen(false)
+                    }
+                  }}
+                  inline
+                  locale="it"
+                  showWeekNumbers
+                  showWeekPicker
+                  calendarStartDay={1}
+                />
+              )}
+              {viewMode === 'month' && (
+                <DatePicker
+                  selected={currentDate}
+                  onChange={(date: Date | null) => {
+                    if (date) {
+                      onDateChange(date)
+                      setIsCalendarOpen(false)
+                    }
+                  }}
+                  inline
+                  locale="it"
+                  showMonthYearPicker
+                  dateFormat="MM/yyyy"
+                />
+              )}
             </div>,
             document.body
           )}
