@@ -48,6 +48,28 @@ function formatTime(isoString: string): string {
 
 function toDateInputValue(isoString: string): string {
   const date = new Date(isoString)
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear().toString().slice(-2)
+  return `${day}/${month}/${year}`
+}
+
+function parseDateInputValue(value: string): Date | null {
+  // Parse DD/MM/YY format
+  const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/)
+  if (!match) return null
+  const day = parseInt(match[1])
+  const month = parseInt(match[2]) - 1
+  const year = 2000 + parseInt(match[3])
+  const date = new Date(year, month, day)
+  if (isNaN(date.getTime())) return null
+  return date
+}
+
+function toDateISOValue(dateStr: string): string {
+  // Convert DD/MM/YY to YYYY-MM-DD for storage
+  const date = parseDateInputValue(dateStr)
+  if (!date) return ''
   return date.toISOString().split('T')[0]
 }
 
@@ -146,7 +168,11 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
         break
       }
       case 'date': {
-        const newDate = new Date(editValue)
+        const newDate = parseDateInputValue(editValue)
+        if (!newDate) {
+          setEditingCell(null)
+          return
+        }
         const oldStart = new Date(session.start_at)
         const oldEnd = new Date(session.end_at)
 
@@ -298,7 +324,10 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     if (newRow) return // Already creating
 
     const now = new Date()
-    const dateStr = currentDate.toISOString().split('T')[0]
+    const day = currentDate.getDate().toString().padStart(2, '0')
+    const month = (currentDate.getMonth() + 1).toString().padStart(2, '0')
+    const year = currentDate.getFullYear().toString().slice(-2)
+    const dateStr = `${day}/${month}/${year}`
     const startStr = `${now.getHours().toString().padStart(2, '0')}:00`
 
     setNewRow({
@@ -317,13 +346,16 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
   const handleSaveNewRow = async () => {
     if (!newRow || !isNewRowValid) return
 
+    const parsedDate = parseDateInputValue(newRow.date)
+    if (!parsedDate) return
+
     const [startHours, startMinutes] = newRow.start.split(':').map(Number)
     const [endHours, endMinutes] = newRow.end.split(':').map(Number)
 
-    const startDate = new Date(newRow.date)
+    const startDate = new Date(parsedDate)
     startDate.setHours(startHours, startMinutes, 0, 0)
 
-    const endDate = new Date(newRow.date)
+    const endDate = new Date(parsedDate)
     endDate.setHours(endHours, endMinutes, 0, 0)
 
     // Validate end > start
@@ -394,10 +426,11 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           return (
             <input
               ref={inputRef as React.RefObject<HTMLInputElement>}
-              type="date"
+              type="text"
               value={editValue}
               onChange={e => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
+              placeholder="GG/MM/AA"
               className="input py-1 text-sm w-full"
             />
           )
@@ -598,11 +631,12 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
                   </select>
                 </td>
                 {/* Data - pre-filled */}
-                <td className="min-w-[120px] px-1">
+                <td className="min-w-[100px] px-1">
                   <input
-                    type="date"
+                    type="text"
                     value={newRow.date}
                     onChange={e => setNewRow({ ...newRow, date: e.target.value })}
+                    placeholder="GG/MM/AA"
                     className="input py-1 text-sm w-full"
                   />
                 </td>
