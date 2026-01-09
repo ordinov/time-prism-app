@@ -466,3 +466,42 @@ body {
 .react-datepicker__navigation:hover *::before {
   border-color: var(--text-primary) !important;
 }
+
+/* Month picker */
+.react-datepicker__month-text {
+  color: var(--text-secondary) !important;
+  padding: 0.5rem !important;
+  border-radius: 0.375rem !important;
+}
+
+.react-datepicker__month-text:hover {
+  background-color: var(--bg-overlay) !important;
+  color: var(--text-primary) !important;
+}
+
+.react-datepicker__month-text--selected,
+.react-datepicker__month-text--keyboard-selected {
+  background: linear-gradient(135deg, var(--prism-violet), var(--prism-indigo)) !important;
+  color: white !important;
+}
+
+.react-datepicker__month-text--today {
+  border: 1px solid var(--prism-violet) !important;
+  background: transparent !important;
+}
+
+/* Week picker */
+.react-datepicker__week-number {
+  color: var(--text-muted) !important;
+}
+
+.react-datepicker__week:hover {
+  background-color: var(--bg-overlay) !important;
+  border-radius: 0.375rem;
+}
+
+.react-datepicker__week--selected .react-datepicker__day,
+.react-datepicker__week--selected .react-datepicker__week-number {
+  background: linear-gradient(135deg, var(--prism-violet), var(--prism-indigo)) !important;
+  color: white !important;
+}

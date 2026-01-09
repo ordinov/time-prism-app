@@ -104,9 +104,18 @@ export default function DateNavHeader({
         const end = new Date(start)
         end.setDate(start.getDate() + 6)
 
-        const startStr = start.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })
-        const endStr = end.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })
-        return `${startStr} - ${endStr}`
+        const startDay = start.getDate()
+        const endDay = end.getDate()
+        // If same month, show "Settimana 2-8 Gennaio 2025"
+        // If different months, show "Settimana 30 Dic - 5 Gen 2025"
+        if (start.getMonth() === end.getMonth()) {
+          const monthYear = end.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+          return `Settimana ${startDay}-${endDay} ${monthYear}`
+        } else {
+          const startMonth = start.toLocaleDateString('it-IT', { month: 'short' })
+          const endMonthYear = end.toLocaleDateString('it-IT', { month: 'short', year: 'numeric' })
+          return `Settimana ${startDay} ${startMonth} - ${endDay} ${endMonthYear}`
+        }
       }
       case 'month':
         return currentDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
