@@ -166,6 +166,10 @@ export default function BackupTab() {
 
   const handleSaveConfig = async () => {
     if (!config) return
+    if (config.scheduleTimes.length === 0) {
+      setToast({ message: 'Serve almeno un orario programmato', type: 'error' })
+      return
+    }
     setSaving(true)
     try {
       await window.api.backup.setConfig(config)
@@ -189,10 +193,6 @@ export default function BackupTab() {
 
   const handleRemoveTime = (time: string) => {
     if (!config) return
-    if (config.scheduleTimes.length <= 1) {
-      setToast({ message: 'Serve almeno un orario', type: 'error' })
-      return
-    }
     setConfig({ ...config, scheduleTimes: config.scheduleTimes.filter(t => t !== time) })
   }
 
