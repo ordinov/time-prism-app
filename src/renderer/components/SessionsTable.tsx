@@ -107,6 +107,88 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
     return sorted
   }, [sessions, sortKey, sortDirection])
 
+  // Save edit - defined before useEffect that uses it
+  const saveEdit = useCallback(async () => {
+    if (!editingCell) return
+
+    const session = sessions.find(s => s.id === editingCell.sessionId)
+    if (!session) {
+      setEditingCell(null)
+      return
+    }
+
+    let updatedSession = { ...session }
+
+    switch (editingCell.field) {
+      case 'project': {
+        const projectId = parseInt(editValue)
+        const project = projects.find(p => p.id === projectId)
+        if (project) {
+          updatedSession.project_id = projectId
+          updatedSession.project_name = project.name
+          updatedSession.project_color = project.color
+          updatedSession.client_name = project.client_name
+        }
+        break
+      }
+      case 'date': {
+        const newDate = new Date(editValue)
+        const oldStart = new Date(session.start_at)
+        const oldEnd = new Date(session.end_at)
+
+        const newStart = new Date(newDate)
+        newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0)
+
+        const newEnd = new Date(newDate)
+        newEnd.setHours(oldEnd.getHours(), oldEnd.getMinutes(), 0, 0)
+
+        updatedSession.start_at = newStart.toISOString()
+        updatedSession.end_at = newEnd.toISOString()
+        break
+      }
+      case 'start': {
+        const [hours, minutes] = editValue.split(':').map(Number)
+        const newStart = new Date(session.start_at)
+        newStart.setHours(hours, minutes, 0, 0)
+
+        if (newStart.getTime() >= new Date(session.end_at).getTime()) {
+          setValidationError(session.id)
+          setEditingCell(null)
+          return
+        }
+
+        updatedSession.start_at = newStart.toISOString()
+        break
+      }
+      case 'end': {
+        const [hours, minutes] = editValue.split(':').map(Number)
+        const newEnd = new Date(session.end_at)
+        newEnd.setHours(hours, minutes, 0, 0)
+
+        if (newEnd.getTime() <= new Date(session.start_at).getTime()) {
+          setValidationError(session.id)
+          setEditingCell(null)
+          return
+        }
+
+        updatedSession.end_at = newEnd.toISOString()
+        break
+      }
+      case 'notes':
+        updatedSession.notes = editValue || null
+        break
+    }
+
+    setEditingCell(null)
+    setValidationError(null)
+
+    try {
+      await onUpdate(updatedSession)
+    } catch (err) {
+      console.error('Failed to update session:', err)
+    }
+  }, [editingCell, editValue, sessions, projects, onUpdate])
+
   // Handle click outside for editing
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -171,90 +253,6 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
         break
     }
   }
-
-  // Save edit
-  const saveEdit = useCallback(async () => {
-    if (!editingCell) return
-
-    const session = sessions.find(s => s.id === editingCell.sessionId)
-    if (!session) {
-      setEditingCell(null)
-      return
-    }
-
-    let updatedSession = { ...session }
-
-    switch (editingCell.field) {
-      case 'project': {
-        const projectId = parseInt(editValue)
-        const project = projects.find(p => p.id === projectId)
-        if (project) {
-          updatedSession.project_id = projectId
-          updatedSession.project_name = project.name
-          updatedSession.project_color = project.color
-          updatedSession.client_name = project.client_name
-        }
-        break
-      }
-      case 'date': {
-        const newDate = new Date(editValue)
-        const oldStart = new Date(session.start_at)
-        const oldEnd = new Date(session.end_at)
-
-        const newStart = new Date(newDate)
-        newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0)
-
-        const newEnd = new Date(newDate)
-        newEnd.setHours(oldEnd.getHours(), oldEnd.getMinutes(), 0, 0)
-
-        updatedSession.start_at = newStart.toISOString()
-        updatedSession.end_at = newEnd.toISOString()
-        break
-      }
-      case 'start': {
-        const [hours, minutes] = editValue.split(':').map(Number)
-        const newStart = new Date(session.start_at)
-        newStart.setHours(hours, minutes, 0, 0)
-
-        // Validate: start must be before end
-        if (newStart.getTime() >= new Date(session.end_at).getTime()) {
-          setValidationError(session.id)
-          setEditingCell(null)
-          return
-        }
-
-        updatedSession.start_at = newStart.toISOString()
-        break
-      }
-      case 'end': {
-        const [hours, minutes] = editValue.split(':').map(Number)
-        const newEnd = new Date(session.end_at)
-        newEnd.setHours(hours, minutes, 0, 0)
-
-        // Validate: end must be after start
-        if (newEnd.getTime() <= new Date(session.start_at).getTime()) {
-          setValidationError(session.id)
-          setEditingCell(null)
-          return
-        }
-
-        updatedSession.end_at = newEnd.toISOString()
-        break
-      }
-      case 'notes':
-        updatedSession.notes = editValue || null
-        break
-    }
-
-    setEditingCell(null)
-    setValidationError(null)
-
-    try {
-      await onUpdate(updatedSession)
-    } catch (err) {
-      console.error('Failed to update session:', err)
-    }
-  }, [editingCell, editValue, sessions, projects, onUpdate])
 
   // Handle key down in edit mode
   const handleKeyDown = async (e: React.KeyboardEvent) => {
