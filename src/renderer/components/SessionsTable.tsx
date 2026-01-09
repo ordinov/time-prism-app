@@ -5,6 +5,7 @@ import { it } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
 import type { SessionWithProject, ProjectWithClient } from '@shared/types'
 import ConfirmModal from './ConfirmModal'
+import NoteViewModal from './NoteViewModal'
 
 registerLocale('it', it)
 
@@ -12,12 +13,6 @@ registerLocale('it', it)
 const TrashIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-  </svg>
-)
-
-const CalendarIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
   </svg>
 )
 
@@ -120,8 +115,8 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
   const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0 })
 
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(null)
-  const calendarButtonRef = useRef<HTMLButtonElement>(null)
   const calendarRef = useRef<HTMLDivElement>(null)
+  const calendarInputRef = useRef<HTMLInputElement | null>(null)
   const newRowRef = useRef<HTMLTableRowElement>(null)
 
   // Sort sessions
@@ -275,7 +270,7 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node
       if (
-        calendarButtonRef.current && !calendarButtonRef.current.contains(target) &&
+        calendarInputRef.current && !calendarInputRef.current.contains(target) &&
         calendarRef.current && !calendarRef.current.contains(target)
       ) {
         setCalendarOpen(null)
@@ -326,9 +321,10 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     }
   }, [newRow])
 
-  // Open calendar at button position
-  const openCalendar = (type: 'edit' | 'new', buttonElement: HTMLButtonElement) => {
-    const rect = buttonElement.getBoundingClientRect()
+  // Open calendar at input position
+  const openCalendar = (type: 'edit' | 'new', inputElement: HTMLInputElement) => {
+    calendarInputRef.current = inputElement
+    const rect = inputElement.getBoundingClientRect()
     setCalendarPosition({
       top: rect.bottom + 8,
       left: rect.left
@@ -531,24 +527,17 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           )
         case 'date':
           return (
-            <div className="flex items-center gap-1">
+            <div className="relative">
               <input
                 ref={inputRef as React.RefObject<HTMLInputElement>}
                 type="text"
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="GG/MM/AA"
-                className="input py-1 text-sm flex-1"
-              />
-              <button
-                ref={calendarButtonRef}
-                type="button"
                 onClick={(e) => openCalendar('edit', e.currentTarget)}
-                className="btn btn-ghost btn-icon p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-              >
-                <CalendarIcon />
-              </button>
+                placeholder="GG/MM/AA"
+                className="input py-1 text-sm w-full cursor-pointer"
+              />
             </div>
           )
         case 'start':
@@ -748,24 +737,15 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
                   </select>
                 </td>
                 {/* Data - pre-filled */}
-                <td className="min-w-[120px] px-1">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="text"
-                      value={newRow.date}
-                      onChange={e => setNewRow({ ...newRow, date: e.target.value })}
-                      placeholder="GG/MM/AA"
-                      className="input py-1 text-sm flex-1"
-                    />
-                    <button
-                      ref={calendarButtonRef}
-                      type="button"
-                      onClick={(e) => openCalendar('new', e.currentTarget)}
-                      className="btn btn-ghost btn-icon p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    >
-                      <CalendarIcon />
-                    </button>
-                  </div>
+                <td className="min-w-[100px] px-1">
+                  <input
+                    type="text"
+                    value={newRow.date}
+                    onChange={e => setNewRow({ ...newRow, date: e.target.value })}
+                    onClick={(e) => openCalendar('new', e.currentTarget as HTMLInputElement)}
+                    placeholder="GG/MM/AA"
+                    className="input py-1 text-sm w-full cursor-pointer"
+                  />
                 </td>
                 {/* Inizio - pre-filled */}
                 <td className="min-w-[80px] px-1">
