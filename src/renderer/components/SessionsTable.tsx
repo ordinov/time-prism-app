@@ -21,6 +21,7 @@ interface EditingCell {
 interface Props {
   sessions: SessionWithProject[]
   projects: ProjectWithClient[]
+  currentDate: Date
   onUpdate: (session: SessionWithProject) => Promise<void>
   onCreate: (projectId: number, startAt: string, endAt: string, notes?: string) => Promise<void>
   onDelete: (id: number) => Promise<void>
@@ -64,13 +65,7 @@ function calculateDays(hours: number): number {
   return hours / 8
 }
 
-function getRoundedCurrentHour(): Date {
-  const now = new Date()
-  now.setMinutes(0, 0, 0)
-  return now
-}
-
-export default function SessionsTable({ sessions, projects, onUpdate, onCreate, onDelete }: Props) {
+export default function SessionsTable({ sessions, projects, currentDate, onUpdate, onCreate, onDelete }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
@@ -288,17 +283,20 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
     }
   }
 
-  // Create new session
+  // Create new session on the selected date
   const handleCreate = async () => {
     if (projects.length === 0) return
 
-    const now = getRoundedCurrentHour()
-    const end = new Date(now)
+    // Use current time but on the selected date
+    const now = new Date()
+    const start = new Date(currentDate)
+    start.setHours(now.getHours(), 0, 0, 0)
+    const end = new Date(start)
     end.setHours(end.getHours() + 1)
 
     try {
       setIsCreating(true)
-      await onCreate(projects[0].id, now.toISOString(), end.toISOString())
+      await onCreate(projects[0].id, start.toISOString(), end.toISOString())
     } catch (err) {
       console.error('Failed to create session:', err)
     } finally {

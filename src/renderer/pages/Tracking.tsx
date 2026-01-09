@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import Timeline from '../components/Timeline'
 import SessionsTable from '../components/SessionsTable'
+import DateNavHeader from '../components/DateNavHeader'
 import { useSessions } from '../hooks/useSessions'
 import { useProjects } from '../hooks/useProjects'
 import type { SessionWithProject } from '@shared/types'
@@ -9,18 +10,19 @@ type Tab = 'track' | 'tabella'
 
 export default function Tracking() {
   const [tab, setTab] = useState<Tab>('track')
+  const [currentDate, setCurrentDate] = useState(new Date())
 
-  // Date range for table view: start of current month to today
+  // Date range for table view: entire selected day
   const { start_date, end_date } = useMemo(() => {
-    const now = new Date()
-    const start = new Date(now.getFullYear(), now.getMonth(), 1)
-    const end = new Date(now)
+    const start = new Date(currentDate)
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(currentDate)
     end.setHours(23, 59, 59, 999)
     return {
       start_date: start.toISOString(),
       end_date: end.toISOString()
     }
-  }, [])
+  }, [currentDate])
 
   const { sessions, create, update, remove } = useSessions({ start_date, end_date })
   const { projects } = useProjects()
@@ -47,6 +49,23 @@ export default function Tracking() {
   const handleDelete = async (id: number) => {
     await remove(id)
   }
+
+  // Date navigation handlers
+  const handlePrevDay = useCallback(() => {
+    const newDate = new Date(currentDate)
+    newDate.setDate(newDate.getDate() - 1)
+    setCurrentDate(newDate)
+  }, [currentDate])
+
+  const handleNextDay = useCallback(() => {
+    const newDate = new Date(currentDate)
+    newDate.setDate(newDate.getDate() + 1)
+    setCurrentDate(newDate)
+  }, [currentDate])
+
+  const handleToday = useCallback(() => {
+    setCurrentDate(new Date())
+  }, [])
 
   return (
     <div className="h-full flex flex-col">
@@ -77,16 +96,34 @@ export default function Tracking() {
       {/* Tab content */}
       <div className="flex-1 overflow-hidden">
         {tab === 'track' ? (
-          <Timeline />
+          <Timeline
+            currentDate={currentDate}
+            onDateChange={setCurrentDate}
+          />
         ) : (
-          <div className="h-full overflow-auto p-4">
-            <SessionsTable
-              sessions={sessions}
-              projects={projects}
-              onUpdate={handleUpdate}
-              onCreate={handleCreate}
-              onDelete={handleDelete}
-            />
+          <div className="h-full flex flex-col">
+            {/* Date navigation header for table view */}
+            <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+              <DateNavHeader
+                currentDate={currentDate}
+                onDateChange={setCurrentDate}
+                onPrev={handlePrevDay}
+                onNext={handleNextDay}
+                onToday={handleToday}
+              />
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto p-4">
+              <SessionsTable
+                sessions={sessions}
+                projects={projects}
+                currentDate={currentDate}
+                onUpdate={handleUpdate}
+                onCreate={handleCreate}
+                onDelete={handleDelete}
+              />
+            </div>
           </div>
         )}
       </div>

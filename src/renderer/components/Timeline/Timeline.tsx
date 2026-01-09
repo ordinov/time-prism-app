@@ -29,8 +29,12 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 
-export default function Timeline() {
-  const [currentDate, setCurrentDate] = useState(new Date())
+interface Props {
+  currentDate: Date
+  onDateChange: (date: Date) => void
+}
+
+export default function Timeline({ currentDate, onDateChange }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('day')
   // Combined state for atomic updates - prevents jumpy zoom
   const [viewState, setViewState] = useState({ zoom: 1, scrollLeft: 0 })
@@ -198,7 +202,7 @@ export default function Timeline() {
     if (viewMode === 'day') newDate.setDate(newDate.getDate() - 1)
     else if (viewMode === 'week') newDate.setDate(newDate.getDate() - 7)
     else newDate.setMonth(newDate.getMonth() - 1)
-    setCurrentDate(newDate)
+    onDateChange(newDate)
   }
 
   const handleNext = () => {
@@ -206,10 +210,10 @@ export default function Timeline() {
     if (viewMode === 'day') newDate.setDate(newDate.getDate() + 1)
     else if (viewMode === 'week') newDate.setDate(newDate.getDate() + 7)
     else newDate.setMonth(newDate.getMonth() + 1)
-    setCurrentDate(newDate)
+    onDateChange(newDate)
   }
 
-  const handleToday = () => setCurrentDate(new Date())
+  const handleToday = () => onDateChange(new Date())
 
   // Zoom centered on a specific X position (relative to timeline content)
   // factor: 1.08 for smooth wheel zoom, 1.3 for button clicks
@@ -298,29 +302,19 @@ export default function Timeline() {
   }
 
   const handleDeleteSession = async (sessionId: number) => {
-    if (confirm('Eliminare questa sessione?')) {
-      await remove(sessionId)
-    }
+    await remove(sessionId)
   }
 
   const handleUpdateSessionNote = async (sessionId: number, notes: string | null) => {
-    console.log('[DEBUG] handleUpdateSessionNote called:', { sessionId, notes })
     const session = sessions.find(s => s.id === sessionId)
-    console.log('[DEBUG] Found session:', session)
-    if (!session) {
-      console.log('[DEBUG] Session not found!')
-      return
-    }
-    const input = {
+    if (!session) return
+    await update({
       id: sessionId,
       project_id: session.project_id,
       start_at: session.start_at,
       end_at: session.end_at,
       notes
-    }
-    console.log('[DEBUG] Calling update with:', input)
-    await update(input)
-    console.log('[DEBUG] Update completed')
+    })
   }
 
   const handleAddProject = (projectId: number) => {
@@ -395,8 +389,11 @@ export default function Timeline() {
   if (isLoading) {
     return (
       <div className="h-full flex flex-col gap-4">
-        <div className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-xl
-                       border border-[var(--border-subtle)] overflow-hidden">
+        <div
+          ref={containerRef}
+          className="flex-1 flex flex-col bg-[var(--bg-surface)] rounded-xl
+                       border border-[var(--border-subtle)] overflow-hidden"
+        >
           <div className="flex-1 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
               <div className="w-8 h-8 border-2 border-[var(--prism-violet)] border-t-transparent rounded-full animate-spin" />
@@ -422,7 +419,7 @@ export default function Timeline() {
         onPrev={handlePrev}
         onNext={handleNext}
         onToday={handleToday}
-        onDateChange={setCurrentDate}
+        onDateChange={onDateChange}
         onViewModeChange={setViewMode}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
