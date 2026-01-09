@@ -131,21 +131,21 @@ export default function Reports() {
       {/* Date range filters */}
       <div className="flex gap-4 mb-6 items-end">
         <div>
-          <label className="text-sm text-gray-600 block mb-1">Da</label>
+          <label className="text-sm text-secondary block mb-1">Da</label>
           <input
             type="date"
             value={customStart}
             onChange={e => setCustomStart(e.target.value)}
-            className="border rounded px-3 py-2"
+            className="input"
           />
         </div>
         <div>
-          <label className="text-sm text-gray-600 block mb-1">A</label>
+          <label className="text-sm text-secondary block mb-1">A</label>
           <input
             type="date"
             value={customEnd}
             onChange={e => setCustomEnd(e.target.value)}
-            className="border rounded px-3 py-2"
+            className="input"
           />
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function Reports() {
       {/* Tab content */}
       {tab === 'tracker' ? (
         <div className="grid grid-cols-2 gap-6">
-          <div className="bg-white rounded shadow p-4">
+          <div className="card">
             <h2 className="text-lg font-semibold mb-3">Riepilogo per Progetto</h2>
             <table className="w-full">
               <thead>
@@ -168,7 +168,7 @@ export default function Reports() {
                 {projectStats.map((p, i) => (
                   <tr key={i} className="border-b">
                     <td className="py-2">{p.name}</td>
-                    <td className="py-2 text-gray-500">{p.client || '—'}</td>
+                    <td className="py-2 text-secondary">{p.client || '—'}</td>
                     <td className="py-2 text-right">{formatMinutes(p.minutes)}</td>
                     <td className="py-2 text-right">{formatDays(p.minutes)}</td>
                   </tr>
@@ -183,7 +183,7 @@ export default function Reports() {
             </table>
           </div>
 
-          <div className="bg-white rounded shadow p-4">
+          <div className="card">
             <h2 className="text-lg font-semibold mb-3">Riepilogo per Data</h2>
             <table className="w-full">
               <thead>
