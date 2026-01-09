@@ -468,6 +468,17 @@ body {
 }
 
 /* Month picker */
+.react-datepicker__header__dropdown {
+  color: var(--text-primary) !important;
+}
+
+.react-datepicker__year-read-view,
+.react-datepicker__month-read-view,
+.react-datepicker__year-option,
+.react-datepicker__month-option {
+  color: var(--text-secondary) !important;
+}
+
 .react-datepicker__month-text {
   color: var(--text-secondary) !important;
   padding: 0.5rem !important;

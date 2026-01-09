@@ -129,9 +129,6 @@ export default function Clients() {
           onChange={e => setSearch(e.target.value)}
           className="input pl-10"
         />
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
-          <SearchIcon />
-        </div>
       </div>
 
       {/* Add form */}

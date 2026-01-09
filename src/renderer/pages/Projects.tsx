@@ -70,6 +70,8 @@ export default function Projects() {
   const [copied, setCopied] = useState(false)
 
   const filteredProjects = projects.filter(p => {
+    // When showArchived is checked, show ONLY archived projects
+    if (showArchived && !p.archived) return false
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
     if (filterClientId && p.client_id !== filterClientId) return false
     return true
@@ -178,10 +180,7 @@ export default function Projects() {
 
       {/* Filters */}
       <div className="flex gap-3 mb-6">
-        <div className="relative flex-1">
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
-            <SearchIcon />
-          </div>
+        <div className="relative flex-[2] min-w-0">
           <input
             type="text"
             placeholder="Cerca progetti..."
@@ -193,7 +192,7 @@ export default function Projects() {
         <select
           value={filterClientId}
           onChange={e => setFilterClientId(e.target.value ? Number(e.target.value) : '')}
-          className="select w-48"
+          className="select flex-1 min-w-[140px] max-w-[200px]"
         >
           <option value="">Tutti i clienti</option>
           {clients.map(c => (
@@ -387,9 +386,8 @@ export default function Projects() {
             /* Project card */
             <div
               key={project.id}
-              className={`card flex items-center justify-between p-4 group
-                         hover:border-[var(--border-default)] transition-all duration-150
-                         ${project.archived ? 'opacity-50' : ''}`}
+              className="card flex items-center justify-between p-4 group
+                         hover:border-[var(--border-default)] transition-all duration-150"
             >
               <div className="flex items-center gap-3">
                 <div

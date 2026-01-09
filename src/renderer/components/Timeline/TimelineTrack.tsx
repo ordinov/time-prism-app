@@ -3,6 +3,7 @@ import type { SessionWithProject } from '@shared/types'
 import { dateToPosition, positionToDate, snapToGrid, formatTimeRange, formatDuration } from './utils'
 import SessionTooltip from './SessionTooltip'
 import NoteModal from './NoteModal'
+import ConfirmModal from '../ConfirmModal'
 
 // Icons
 const XMarkIcon = () => (
@@ -62,6 +63,8 @@ export default function TimelineTrack({
     originalStart: Date
     originalEnd: Date
     initialX: number
+    currentStart: Date
+    currentEnd: Date
   } | null>(null)
 
   // Move state
@@ -70,6 +73,8 @@ export default function TimelineTrack({
     originalStart: Date
     originalEnd: Date
     initialX: number
+    currentStart: Date
+    currentEnd: Date
   } | null>(null)
 
   // Context menu state
@@ -84,6 +89,7 @@ export default function TimelineTrack({
     session: SessionWithProject
     x: number
     y: number
+    direction: 'up' | 'down'
   } | null>(null)
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -91,6 +97,14 @@ export default function TimelineTrack({
   const [noteModal, setNoteModal] = useState<{
     session: SessionWithProject
   } | null>(null)
+
+  // Delete confirmation modal state
+  const [deleteModal, setDeleteModal] = useState<{
+    session: SessionWithProject
+  } | null>(null)
+
+  // Selected session state
+  const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null)
 
   // Cleanup tooltip timeout on unmount
   useEffect(() => {
@@ -119,6 +133,41 @@ export default function TimelineTrack({
     window.addEventListener('click', handleClick)
     return () => window.removeEventListener('click', handleClick)
   }, [contextMenu])
+
+  // Handle Delete key for selected session
+  useEffect(() => {
+    if (!selectedSessionId) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const session = sessions.find(s => s.id === selectedSessionId)
+        if (session) {
+          setDeleteModal({ session })
+        }
+      } else if (e.key === 'Escape') {
+        setSelectedSessionId(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedSessionId, sessions])
+
+  // Deselect when clicking outside sessions (but not during drag operations)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // Don't deselect during drag/resize operations
+      if (moving || resizing) return
+
+      const target = e.target as HTMLElement
+      if (!target.closest('[data-session-block]')) {
+        setSelectedSessionId(null)
+      }
+    }
+
+    window.addEventListener('mousedown', handleClickOutside)
+    return () => window.removeEventListener('mousedown', handleClickOutside)
+  }, [moving, resizing])
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!trackRef.current) return
@@ -159,6 +208,8 @@ export default function TimelineTrack({
     handle: 'start' | 'end',
     session: SessionWithProject
   ) => {
+    // Only start resize on left-click
+    if (e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
     if (!trackRef.current) return
@@ -171,7 +222,9 @@ export default function TimelineTrack({
       handle,
       originalStart: new Date(session.start_at),
       originalEnd: new Date(session.end_at),
-      initialX: x
+      initialX: x,
+      currentStart: new Date(session.start_at),
+      currentEnd: new Date(session.end_at)
     })
   }
 
@@ -201,16 +254,30 @@ export default function TimelineTrack({
       }
     }
 
-    // Update session immediately for visual feedback
-    onUpdateSession(resizing.sessionId, newStart, newEnd)
+    // Only update if values actually changed (prevents infinite re-render loop)
+    if (newStart.getTime() !== resizing.currentStart.getTime() ||
+        newEnd.getTime() !== resizing.currentEnd.getTime()) {
+      setResizing(prev => prev ? { ...prev, currentStart: newStart, currentEnd: newEnd } : null)
+    }
   }
 
   const handleResizeEnd = () => {
+    if (resizing) {
+      // Check if size actually changed
+      const hasChanged = resizing.currentStart.getTime() !== resizing.originalStart.getTime() ||
+                         resizing.currentEnd.getTime() !== resizing.originalEnd.getTime()
+      if (hasChanged) {
+        // Save to database only if there was actual resize
+        onUpdateSession(resizing.sessionId, resizing.currentStart, resizing.currentEnd)
+      }
+    }
     setResizing(null)
   }
 
   // Move handlers
   const handleMoveStart = (e: React.MouseEvent, session: SessionWithProject) => {
+    // Only start move on left-click
+    if (e.button !== 0) return
     e.stopPropagation()
     e.preventDefault()
     if (!trackRef.current) return
@@ -222,7 +289,9 @@ export default function TimelineTrack({
       sessionId: session.id,
       originalStart: new Date(session.start_at),
       originalEnd: new Date(session.end_at),
-      initialX: x
+      initialX: x,
+      currentStart: new Date(session.start_at),
+      currentEnd: new Date(session.end_at)
     })
   }
 
@@ -238,10 +307,26 @@ export default function TimelineTrack({
     const newStart = snapToGrid(positionToDate(newStartX, viewStart, pixelsPerHour))
     const newEnd = new Date(newStart.getTime() + duration)
 
-    onUpdateSession(moving.sessionId, newStart, newEnd)
+    // Only update if values actually changed (prevents infinite re-render loop)
+    if (newStart.getTime() !== moving.currentStart.getTime() ||
+        newEnd.getTime() !== moving.currentEnd.getTime()) {
+      setMoving(prev => prev ? { ...prev, currentStart: newStart, currentEnd: newEnd } : null)
+    }
   }
 
   const handleMoveEnd = () => {
+    if (moving) {
+      // Check if position actually changed
+      const hasChanged = moving.currentStart.getTime() !== moving.originalStart.getTime() ||
+                         moving.currentEnd.getTime() !== moving.originalEnd.getTime()
+      if (hasChanged) {
+        // Save to database only if there was actual movement
+        onUpdateSession(moving.sessionId, moving.currentStart, moving.currentEnd)
+      } else {
+        // It was just a click, select the session
+        setSelectedSessionId(moving.sessionId)
+      }
+    }
     setMoving(null)
   }
 
@@ -284,11 +369,17 @@ export default function TimelineTrack({
     if (isDragging || resizing || moving) return
 
     const rect = e.currentTarget.getBoundingClientRect()
+    // Calculate if track is in upper or lower half of viewport
+    const viewportHeight = window.innerHeight
+    const trackCenterY = rect.top + rect.height / 2
+    const direction: 'up' | 'down' = trackCenterY < viewportHeight / 2 ? 'down' : 'up'
+
     tooltipTimeoutRef.current = setTimeout(() => {
       setTooltip({
         session,
         x: rect.left + rect.width / 2,
-        y: rect.top
+        y: direction === 'up' ? rect.top : rect.bottom,
+        direction
       })
     }, 300)
   }
@@ -310,6 +401,20 @@ export default function TimelineTrack({
     const B = Math.max((num & 0x0000FF) - amt, 0)
     return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`
   }
+
+  // Calculate contrasting text color (black or white) based on background luminance
+  const getContrastTextColor = (hex: string) => {
+    const num = parseInt(hex.replace('#', ''), 16)
+    const r = (num >> 16) / 255
+    const g = ((num >> 8) & 0x00FF) / 255
+    const b = (num & 0x0000FF) / 255
+    // Calculate relative luminance (WCAG formula)
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return luminance > 0.5 ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.9)'
+  }
+
+  const textColor = getContrastTextColor(projectColor)
+  const textColorMuted = getContrastTextColor(projectColor).replace(/[\d.]+\)$/, '0.8)')
 
   return (
     <div className="flex border-b border-[var(--border-subtle)] group/track hover:bg-white/[0.02] transition-colors">
@@ -368,16 +473,29 @@ export default function TimelineTrack({
           )}
 
           {sessions.map(session => {
-            const left = dateToPosition(new Date(session.start_at), viewStart, pixelsPerHour)
-            const right = dateToPosition(new Date(session.end_at), viewStart, pixelsPerHour)
+            // Use preview position during drag/resize, otherwise use actual session data
+            const isMoving = moving?.sessionId === session.id
+            const isResizing = resizing?.sessionId === session.id
+            const isSelected = selectedSessionId === session.id
+            const displayStart = isMoving ? moving.currentStart
+              : isResizing ? resizing.currentStart
+              : new Date(session.start_at)
+            const displayEnd = isMoving ? moving.currentEnd
+              : isResizing ? resizing.currentEnd
+              : new Date(session.end_at)
+
+            const left = dateToPosition(displayStart, viewStart, pixelsPerHour)
+            const right = dateToPosition(displayEnd, viewStart, pixelsPerHour)
             const width = right - left
 
             return (
               <div
                 key={session.id}
+                data-session-block
                 className={`absolute top-2 bottom-2 rounded-md group/session
-                           transition-all duration-150 hover:scale-y-110 hover:z-10
-                           ${moving?.sessionId === session.id ? 'cursor-grabbing' : 'cursor-grab'}`}
+                           ${isMoving || isResizing ? '' : 'transition-all duration-150'} hover:scale-y-110 hover:z-10
+                           ${isMoving ? 'cursor-grabbing' : 'cursor-grab'}
+                           ${isSelected ? 'ring-2 ring-white ring-offset-1 ring-offset-transparent z-20' : ''}`}
                 style={{
                   left,
                   width: Math.max(width, 6),
@@ -392,19 +510,28 @@ export default function TimelineTrack({
               >
                 {/* Time label inside block (if wide enough) */}
                 {width > 60 && (
-                  <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white/90">
-                    {formatDuration(session.start_at, session.end_at)}
+                  <span
+                    className="absolute inset-0 flex items-center justify-center text-xs font-medium"
+                    style={{ color: textColor }}
+                  >
+                    {formatDuration(displayStart.toISOString(), displayEnd.toISOString())}
                   </span>
                 )}
 
                 {/* Note indicator */}
                 {session.notes && (
-                  <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />
+                  <div
+                    className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: textColor }}
+                  />
                 )}
 
                 {/* Note preview (if wide enough) */}
                 {width > 100 && session.notes && (
-                  <span className="absolute bottom-0.5 left-2 right-2 text-[10px] text-white/60 truncate">
+                  <span
+                    className="absolute bottom-0.5 left-2 right-2 text-[10px] truncate"
+                    style={{ color: textColorMuted }}
+                  >
                     {session.notes}
                   </span>
                 )}
@@ -412,19 +539,25 @@ export default function TimelineTrack({
                 {/* Resize handle - Start */}
                 <div
                   className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize
-                             hover:bg-white/30 rounded-l-md"
+                             hover:bg-black/10 rounded-l-md"
                   onMouseDown={(e) => handleResizeStart(e, session.id, 'start', session)}
                 >
-                  <div className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white/80 rounded-full" />
+                  <div
+                    className="absolute left-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full"
+                    style={{ backgroundColor: textColor }}
+                  />
                 </div>
 
                 {/* Resize handle - End */}
                 <div
                   className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize
-                             hover:bg-white/30 rounded-r-md"
+                             hover:bg-black/10 rounded-r-md"
                   onMouseDown={(e) => handleResizeStart(e, session.id, 'end', session)}
                 >
-                  <div className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white/80 rounded-full" />
+                  <div
+                    className="absolute right-0.5 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full"
+                    style={{ backgroundColor: textColor }}
+                  />
                 </div>
               </div>
             )
@@ -474,7 +607,10 @@ export default function TimelineTrack({
             className="w-full px-3 py-1.5 text-sm text-left text-[var(--error)]
                        hover:bg-[var(--error)]/10 transition-colors"
             onClick={() => {
-              onDeleteSession(contextMenu.sessionId)
+              const session = sessions.find(s => s.id === contextMenu.sessionId)
+              if (session) {
+                setDeleteModal({ session })
+              }
               setContextMenu(null)
             }}
           >
@@ -490,6 +626,7 @@ export default function TimelineTrack({
           endAt={tooltip.session.end_at}
           notes={tooltip.session.notes}
           position={{ x: tooltip.x, y: tooltip.y }}
+          direction={tooltip.direction}
         />
       )}
 
@@ -503,6 +640,20 @@ export default function TimelineTrack({
           currentNote={noteModal.session.notes}
           onSave={onUpdateSessionNote}
           onClose={() => setNoteModal(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <ConfirmModal
+          isOpen={true}
+          title="Elimina sessione"
+          message={`Vuoi eliminare la sessione ${formatTimeRange(deleteModal.session.start_at, deleteModal.session.end_at)}?`}
+          confirmLabel="Elimina"
+          cancelLabel="Annulla"
+          danger
+          onConfirm={() => onDeleteSession(deleteModal.session.id)}
+          onClose={() => setDeleteModal(null)}
         />
       )}
     </div>

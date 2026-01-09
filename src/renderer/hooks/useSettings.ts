@@ -7,6 +7,11 @@ export function useSettings() {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
+    // Check if settings API is available (preload might not be rebuilt yet)
+    if (!window.api?.settings) {
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       const data = await window.api.settings.getAll()
@@ -24,6 +29,11 @@ export function useSettings() {
   }, [load])
 
   const setSetting = useCallback(async (key: string, value: string) => {
+    // Check if settings API is available
+    if (!window.api?.settings) {
+      console.warn('Settings API not available - preload needs rebuild')
+      return
+    }
     await window.api.settings.set(key, value)
     setSettings(prev => ({ ...prev, [key]: value }))
   }, [])

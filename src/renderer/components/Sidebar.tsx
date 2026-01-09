@@ -33,32 +33,8 @@ const GearIcon = () => (
   </svg>
 )
 
-// Prism logo icon
-const PrismIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-    <defs>
-      <linearGradient id="prismGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#8b5cf6" />
-        <stop offset="50%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#0ea5e9" />
-      </linearGradient>
-    </defs>
-    <path
-      d="M12 2L2 19h20L12 2z"
-      stroke="url(#prismGradient)"
-      strokeWidth="2"
-      fill="none"
-      strokeLinejoin="round"
-    />
-    <path
-      d="M12 2v17M12 19l-5-8.5M12 19l5-8.5"
-      stroke="url(#prismGradient)"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      opacity="0.6"
-    />
-  </svg>
-)
+// Import logo
+import logoUrl from '/logo.png'
 
 const navItems = [
   { to: '/tracking', label: 'Track', icon: ClockIcon },
@@ -73,10 +49,10 @@ export default function Sidebar() {
     <nav className="w-16 bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col">
       {/* Logo */}
       <div className="h-16 flex items-center justify-center border-b border-[var(--border-subtle)]">
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--prism-violet)] to-[var(--prism-cyan)]
+        <div className="w-9 h-9 rounded-xl overflow-hidden
                         flex items-center justify-center shadow-[var(--glow-prism)]
                         transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.4)]">
-          <PrismIcon />
+          <img src={logoUrl} alt="Time Prism" className="w-full h-full object-contain" />
         </div>
       </div>
 

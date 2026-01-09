@@ -70,7 +70,7 @@ export function formatDuration(startAt: string, endAt: string): string {
 export function formatTimeRange(startAt: string, endAt: string): string {
   const start = new Date(startAt)
   const end = new Date(endAt)
-  const fmt = (d: Date) => d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+  const fmt = (d: Date) => d.toLocaleTimeString('it-IT', { hour: 'numeric', minute: '2-digit' })
   return `${fmt(start)} - ${fmt(end)}`
 }
 

@@ -1,6 +1,6 @@
 import { ipcMain, dialog } from 'electron'
 import { getDatabase } from './database'
-import { createBackup, listBackups, restoreBackup, exportBackup, importBackup, deleteBackups, createManualBackup, downloadBackup } from './backup'
+import { createBackup, listBackups, restoreBackup, exportBackup, importBackup, deleteBackups, createManualBackup, downloadBackup, downloadArchive, uploadBackup, uploadArchive } from './backup'
 import { getBackupConfig, setBackupConfig, restartBackupScheduler } from './backup-scheduler'
 import type {
   Client, Project, Session,
@@ -82,11 +82,11 @@ export function registerIpcHandlers(): void {
     const params: unknown[] = []
 
     if (query.start_date) {
-      sql += ' AND s.start_at >= ?'
+      sql += ' AND s.end_at > ?'
       params.push(query.start_date)
     }
     if (query.end_date) {
-      sql += ' AND s.start_at <= ?'
+      sql += ' AND s.start_at < ?'
       params.push(query.end_date)
     }
     if (query.project_id) {
@@ -147,9 +147,16 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('backup:download', async (_, backupName: string): Promise<string | null> => {
+    // Transform internal name to user-friendly download name
+    // From: data_2026-01-09T18-13-48-274Z.db
+    // To:   time-prism_data_2026-01-09_18-13-48.db
+    const downloadName = backupName
+      .replace(/^(data|backup|pre-restore)_/, 'time-prism_$1_')
+      .replace(/T(\d{2})-(\d{2})-(\d{2})-\d+Z\.db$/, '_$1-$2-$3.db')
+
     const result = await dialog.showSaveDialog({
       title: 'Scarica backup',
-      defaultPath: backupName,
+      defaultPath: downloadName,
       filters: [{ name: 'SQLite Database', extensions: ['db'] }]
     })
     if (!result.canceled && result.filePath) {
@@ -160,9 +167,12 @@ export function registerIpcHandlers(): void {
   })
 
   ipcMain.handle('backup:export', async (): Promise<string | null> => {
+    const now = new Date()
+    const date = now.toISOString().split('T')[0]
+    const time = now.toTimeString().slice(0, 8).replace(/:/g, '-')
     const result = await dialog.showSaveDialog({
       title: 'Esporta backup',
-      defaultPath: `time-prism-backup-${new Date().toISOString().split('T')[0]}.db`,
+      defaultPath: `time-prism_data_${date}_${time}.db`,
       filters: [{ name: 'SQLite Database', extensions: ['db'] }]
     })
     if (!result.canceled && result.filePath) {
@@ -192,6 +202,43 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('backup:setConfig', (_, config: BackupConfig): void => {
     setBackupConfig(config)
     restartBackupScheduler()
+  })
+
+  ipcMain.handle('backup:downloadArchive', async (): Promise<string | null> => {
+    const result = await dialog.showSaveDialog({
+      title: 'Scarica archivio backup',
+      defaultPath: `time-prism-backups-${new Date().toISOString().split('T')[0]}.zip`,
+      filters: [{ name: 'ZIP Archive', extensions: ['zip'] }]
+    })
+    if (!result.canceled && result.filePath) {
+      await downloadArchive(result.filePath)
+      return result.filePath
+    }
+    return null
+  })
+
+  ipcMain.handle('backup:uploadBackup', async (): Promise<string | null> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Importa backup',
+      filters: [{ name: 'SQLite Database', extensions: ['db'] }],
+      properties: ['openFile']
+    })
+    if (!result.canceled && result.filePaths.length > 0) {
+      return uploadBackup(result.filePaths[0])
+    }
+    return null
+  })
+
+  ipcMain.handle('backup:uploadArchive', async (): Promise<number> => {
+    const result = await dialog.showOpenDialog({
+      title: 'Importa archivio backup',
+      filters: [{ name: 'ZIP Archive', extensions: ['zip'] }],
+      properties: ['openFile']
+    })
+    if (!result.canceled && result.filePaths.length > 0) {
+      return uploadArchive(result.filePaths[0])
+    }
+    return 0
   })
 
   // Settings

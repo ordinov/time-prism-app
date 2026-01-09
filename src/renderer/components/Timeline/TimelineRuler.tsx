@@ -24,7 +24,7 @@ function formatHour(hour: number, detail: DetailLevel): string {
   if (detail === 'hours-compact' || detail === 'days-only') {
     return hour.toString()
   }
-  return `${hour.toString().padStart(2, '0')}:00`
+  return `${hour}:00`
 }
 
 function formatMinute(minute: number): string {

@@ -5,12 +5,20 @@
     "output": "release"
   },
   "files": [
-    "dist/**/*"
+    "dist/**/*",
+    "assets/**/*"
   ],
+  "icon": "assets/icon.png",
   "mac": {
-    "target": "dmg"
+    "target": "dmg",
+    "icon": "assets/icon.png"
   },
   "win": {
-    "target": "nsis"
+    "target": "nsis",
+    "icon": "assets/icon.png"
+  },
+  "linux": {
+    "target": "AppImage",
+    "icon": "assets/icon.png"
   }
 }

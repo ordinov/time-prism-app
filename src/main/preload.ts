@@ -40,6 +40,9 @@ const api = {
     import: (): Promise<boolean> => ipcRenderer.invoke('backup:import'),
     getConfig: (): Promise<BackupConfig> => ipcRenderer.invoke('backup:getConfig'),
     setConfig: (config: BackupConfig): Promise<void> => ipcRenderer.invoke('backup:setConfig', config),
+    downloadArchive: (): Promise<string | null> => ipcRenderer.invoke('backup:downloadArchive'),
+    uploadBackup: (): Promise<string | null> => ipcRenderer.invoke('backup:uploadBackup'),
+    uploadArchive: (): Promise<number> => ipcRenderer.invoke('backup:uploadArchive'),
   },
   settings: {
     getAll: (): Promise<SettingsMap> => ipcRenderer.invoke('db:settings:getAll'),

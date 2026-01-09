@@ -27,6 +27,18 @@ const XIcon = () => (
   </svg>
 )
 
+const ArchiveIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+  </svg>
+)
+
+const UploadIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+  </svg>
+)
+
 const WEEKDAYS = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato']
 
 function formatFileSize(bytes: number): string {
@@ -248,6 +260,41 @@ export default function BackupTab() {
     }
   }
 
+  const handleDownloadArchive = async () => {
+    try {
+      const result = await window.api.backup.downloadArchive()
+      if (result) {
+        setToast({ message: 'Archivio scaricato con successo', type: 'success' })
+      }
+    } catch (err) {
+      setToast({ message: 'Errore durante il download dell\'archivio', type: 'error' })
+    }
+  }
+
+  const handleUploadBackup = async () => {
+    try {
+      const result = await window.api.backup.uploadBackup()
+      if (result) {
+        await loadData()
+        setToast({ message: `Backup importato: ${result}`, type: 'success' })
+      }
+    } catch (err) {
+      setToast({ message: 'Errore durante l\'importazione del backup', type: 'error' })
+    }
+  }
+
+  const handleUploadArchive = async () => {
+    try {
+      const count = await window.api.backup.uploadArchive()
+      if (count > 0) {
+        await loadData()
+        setToast({ message: `Importati ${count} backup dall'archivio`, type: 'success' })
+      }
+    } catch (err) {
+      setToast({ message: 'Errore durante l\'importazione dell\'archivio', type: 'error' })
+    }
+  }
+
   const toggleSelect = (name: string) => {
     setSelected(prev => {
       const next = new Set(prev)
@@ -410,7 +457,7 @@ export default function BackupTab() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         <button
           onClick={handleCreate}
           disabled={creating}
@@ -418,6 +465,31 @@ export default function BackupTab() {
         >
           <PlusIcon />
           {creating ? 'Creazione...' : 'Crea Backup Manuale'}
+        </button>
+
+        <button
+          onClick={handleDownloadArchive}
+          className="btn btn-secondary"
+          disabled={backups.length === 0}
+        >
+          <ArchiveIcon />
+          Scarica archivio
+        </button>
+
+        <button
+          onClick={handleUploadBackup}
+          className="btn btn-secondary"
+        >
+          <UploadIcon />
+          Importa backup
+        </button>
+
+        <button
+          onClick={handleUploadArchive}
+          className="btn btn-secondary"
+        >
+          <UploadIcon />
+          Importa archivio
         </button>
 
         {selected.size > 0 && (

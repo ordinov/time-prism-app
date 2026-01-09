@@ -89,9 +89,9 @@ export default function SearchableProjectSelect({ projects, onSelect }: Searchab
         <span>Aggiungi progetto</span>
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown - opens upward since button is at bottom of page */}
       {isOpen && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64
                         bg-[var(--bg-overlay)] border border-[var(--border-subtle)]
                         rounded-lg shadow-[var(--shadow-lg)] z-50 overflow-hidden">
           {/* Search input */}

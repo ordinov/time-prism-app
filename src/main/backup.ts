@@ -1,6 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
+import archiver from 'archiver'
+import AdmZip from 'adm-zip'
 import { getDbPath } from './database'
 import type { BackupConfig } from '../shared/types'
 
@@ -217,4 +219,97 @@ export function importBackup(sourcePath: string): void {
     throw new Error('Source file does not exist')
   }
   fs.copyFileSync(sourcePath, dbPath)
+}
+
+export function downloadArchive(destinationPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const backupDir = getBackupDir()
+    if (!fs.existsSync(backupDir)) {
+      reject(new Error('No backups directory'))
+      return
+    }
+
+    const backups = fs.readdirSync(backupDir).filter(f => f.endsWith('.db'))
+    if (backups.length === 0) {
+      reject(new Error('No backups to archive'))
+      return
+    }
+
+    const output = fs.createWriteStream(destinationPath)
+    const archive = archiver('zip', { zlib: { level: 9 } })
+
+    output.on('close', () => resolve())
+    archive.on('error', (err) => reject(err))
+
+    archive.pipe(output)
+
+    for (const backup of backups) {
+      archive.file(path.join(backupDir, backup), { name: backup })
+    }
+
+    archive.finalize()
+  })
+}
+
+export function uploadBackup(sourcePath: string): string {
+  const backupDir = getBackupDir()
+
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true })
+  }
+
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error('Source file does not exist')
+  }
+
+  const fileName = path.basename(sourcePath)
+  const destPath = path.join(backupDir, fileName)
+
+  // If file with same name exists, add timestamp
+  let finalPath = destPath
+  if (fs.existsSync(destPath)) {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const ext = path.extname(fileName)
+    const base = path.basename(fileName, ext)
+    finalPath = path.join(backupDir, `${base}_${timestamp}${ext}`)
+  }
+
+  fs.copyFileSync(sourcePath, finalPath)
+  return path.basename(finalPath)
+}
+
+export function uploadArchive(sourcePath: string): number {
+  const backupDir = getBackupDir()
+
+  if (!fs.existsSync(backupDir)) {
+    fs.mkdirSync(backupDir, { recursive: true })
+  }
+
+  if (!fs.existsSync(sourcePath)) {
+    throw new Error('Archive file does not exist')
+  }
+
+  const zip = new AdmZip(sourcePath)
+  const entries = zip.getEntries()
+
+  let importedCount = 0
+  for (const entry of entries) {
+    if (entry.entryName.endsWith('.db') && !entry.isDirectory) {
+      const fileName = path.basename(entry.entryName)
+      let destPath = path.join(backupDir, fileName)
+
+      // If file with same name exists, add timestamp
+      if (fs.existsSync(destPath)) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const ext = path.extname(fileName)
+        const base = path.basename(fileName, ext)
+        destPath = path.join(backupDir, `${base}_${timestamp}${ext}`)
+      }
+
+      zip.extractEntryTo(entry, backupDir, false, true, false, path.basename(destPath))
+      importedCount++
+    }
+  }
+
+  return importedCount
 }
