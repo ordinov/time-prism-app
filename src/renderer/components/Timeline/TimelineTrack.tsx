@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import type { SessionWithProject } from '@shared/types'
 import { dateToPosition, positionToDate, snapToGrid, formatTimeRange, formatDuration } from './utils'
+import SessionTooltip from './SessionTooltip'
 
 // Icons
 const XMarkIcon = () => (
@@ -72,6 +73,14 @@ export default function TimelineTrack({
     x: number
     y: number
   } | null>(null)
+
+  // Tooltip state
+  const [tooltip, setTooltip] = useState<{
+    session: SessionWithProject
+    x: number
+    y: number
+  } | null>(null)
+  const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Close context menu on click outside
   useEffect(() => {
@@ -239,6 +248,26 @@ export default function TimelineTrack({
     })
   }
 
+  // Tooltip handlers
+  const handleSessionMouseEnter = (e: React.MouseEvent, session: SessionWithProject) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    tooltipTimeoutRef.current = setTimeout(() => {
+      setTooltip({
+        session,
+        x: rect.left + rect.width / 2,
+        y: rect.top
+      })
+    }, 300)
+  }
+
+  const handleSessionMouseLeave = () => {
+    if (tooltipTimeoutRef.current) {
+      clearTimeout(tooltipTimeoutRef.current)
+      tooltipTimeoutRef.current = null
+    }
+    setTooltip(null)
+  }
+
   // Create a slightly darker version of the color for the border
   const darkenColor = (hex: string, percent: number) => {
     const num = parseInt(hex.replace('#', ''), 16)
@@ -323,7 +352,8 @@ export default function TimelineTrack({
                   borderLeft: `2px solid ${darkenColor(projectColor, 20)}`,
                   boxShadow: `0 2px 8px ${projectColor}40, inset 0 1px 0 rgba(255,255,255,0.15)`
                 }}
-                title={`${formatTimeRange(session.start_at, session.end_at)} (${formatDuration(session.start_at, session.end_at)})`}
+                onMouseEnter={(e) => handleSessionMouseEnter(e, session)}
+                onMouseLeave={handleSessionMouseLeave}
                 onMouseDown={(e) => handleMoveStart(e, session)}
                 onContextMenu={(e) => handleContextMenu(e, session.id)}
               >
@@ -331,6 +361,18 @@ export default function TimelineTrack({
                 {width > 60 && (
                   <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white/90">
                     {formatDuration(session.start_at, session.end_at)}
+                  </span>
+                )}
+
+                {/* Note indicator */}
+                {session.notes && (
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-white/70" />
+                )}
+
+                {/* Note preview (if wide enough) */}
+                {width > 100 && session.notes && (
+                  <span className="absolute bottom-0.5 left-2 right-2 text-[10px] text-white/60 truncate">
+                    {session.notes}
                   </span>
                 )}
 
@@ -390,6 +432,16 @@ export default function TimelineTrack({
             Elimina
           </button>
         </div>
+      )}
+
+      {/* Tooltip */}
+      {tooltip && (
+        <SessionTooltip
+          startAt={tooltip.session.start_at}
+          endAt={tooltip.session.end_at}
+          notes={tooltip.session.notes}
+          position={{ x: tooltip.x, y: tooltip.y }}
+        />
       )}
     </div>
   )
