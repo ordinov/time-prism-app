@@ -117,6 +117,7 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
   const [newRow, setNewRow] = useState<NewRowData | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [validationError, setValidationError] = useState<number | null>(null)
+  const [newRowErrors, setNewRowErrors] = useState<{ project?: boolean; end?: boolean; timeRange?: boolean }>({})
   const [calendarOpen, setCalendarOpen] = useState<'edit' | 'new' | null>(null)
   const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0 })
   const [noteViewModal, setNoteViewModal] = useState<{ note: string } | null>(null)
@@ -448,6 +449,7 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     const dateStr = `${day}/${month}/${year}`
     const startStr = `${now.getHours().toString().padStart(2, '0')}:00`
 
+    setNewRowErrors({})
     setNewRow({
       projectId: null,
       date: dateStr,
@@ -462,10 +464,38 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
 
   // Save the new row
   const handleSaveNewRow = async () => {
-    if (!newRow || !isNewRowValid) return
+    if (!newRow) return
+
+    // Validate required fields
+    const errors: { project?: boolean; end?: boolean; timeRange?: boolean } = {}
+
+    if (!newRow.projectId) {
+      errors.project = true
+    }
+    if (!newRow.end) {
+      errors.end = true
+    }
 
     const parsedDate = parseDateInputValue(newRow.date)
     if (!parsedDate) return
+
+    // Check time range if both times are provided
+    if (newRow.start && newRow.end) {
+      const [startHours, startMinutes] = newRow.start.split(':').map(Number)
+      const [endHours, endMinutes] = newRow.end.split(':').map(Number)
+      const startMinutesTotal = startHours * 60 + startMinutes
+      const endMinutesTotal = endHours * 60 + endMinutes
+
+      if (endMinutesTotal <= startMinutesTotal) {
+        errors.end = true
+        errors.timeRange = true
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setNewRowErrors(errors)
+      return
+    }
 
     const [startHours, startMinutes] = newRow.start.split(':').map(Number)
     const [endHours, endMinutes] = newRow.end.split(':').map(Number)
@@ -476,13 +506,9 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     const endDate = new Date(parsedDate)
     endDate.setHours(endHours, endMinutes, 0, 0)
 
-    // Validate end > start
-    if (endDate.getTime() <= startDate.getTime()) {
-      return // Invalid time range
-    }
-
     try {
       setIsSaving(true)
+      setNewRowErrors({})
       await onCreate(
         newRow.projectId!,
         startDate.toISOString(),
@@ -751,8 +777,11 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
                 <td className="min-w-[200px] px-1">
                   <select
                     value={newRow.projectId ?? ''}
-                    onChange={e => setNewRow({ ...newRow, projectId: e.target.value ? parseInt(e.target.value) : null })}
-                    className={`select w-full py-1 text-sm ${!newRow.projectId ? 'text-[var(--text-muted)]' : ''}`}
+                    onChange={e => {
+                      setNewRow({ ...newRow, projectId: e.target.value ? parseInt(e.target.value) : null })
+                      if (newRowErrors.project) setNewRowErrors(prev => ({ ...prev, project: false }))
+                    }}
+                    className={`select w-full py-1 text-sm ${!newRow.projectId ? 'text-[var(--text-muted)]' : ''} ${newRowErrors.project ? 'border-[var(--error)] border-2' : ''}`}
                   >
                     <option value="">Seleziona progetto...</option>
                     {projects.map(p => (
@@ -787,8 +816,11 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
                   <input
                     type="time"
                     value={newRow.end}
-                    onChange={e => setNewRow({ ...newRow, end: e.target.value })}
-                    className={`input py-1 text-sm font-mono w-full ${!newRow.end ? 'border-[var(--warning)]' : ''}`}
+                    onChange={e => {
+                      setNewRow({ ...newRow, end: e.target.value })
+                      if (newRowErrors.end) setNewRowErrors(prev => ({ ...prev, end: false, timeRange: false }))
+                    }}
+                    className={`input py-1 text-sm font-mono w-full ${newRowErrors.end ? 'border-[var(--error)] border-2' : ''}`}
                     placeholder="--:--"
                   />
                 </td>
