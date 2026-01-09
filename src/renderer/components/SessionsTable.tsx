@@ -264,12 +264,16 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [editingCell, editValue, saveEdit])
 
-  // Focus input when editing starts
+  // Focus input when editing starts, and open calendar for date field
   useEffect(() => {
     if (editingCell && inputRef.current) {
       inputRef.current.focus()
       if ('select' in inputRef.current && editingCell.field !== 'project') {
         (inputRef.current as HTMLInputElement).select()
+      }
+      // Auto-open calendar when editing date
+      if (editingCell.field === 'date') {
+        openCalendar('edit', inputRef.current as HTMLInputElement)
       }
     }
   }, [editingCell])
@@ -618,7 +622,6 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           </div>
         )
       case 'notes':
-        const hasNewlines = session.notes?.includes('\n')
         return (
           <div className={`${cellClasses} max-w-[200px] xl:max-w-[400px] 2xl:max-w-[600px] flex items-center gap-2`}>
             <span
@@ -628,7 +631,7 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
             >
               {session.notes?.split('\n')[0] || '—'}
             </span>
-            {hasNewlines && (
+            {session.notes && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
@@ -905,6 +908,13 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           onClose={() => setDeleteModal(null)}
         />
       )}
+
+      {/* Note view modal */}
+      <NoteViewModal
+        isOpen={noteViewModal !== null}
+        note={noteViewModal?.note || ''}
+        onClose={() => setNoteViewModal(null)}
+      />
 
       {/* Calendar portal */}
       {calendarOpen && createPortal(
