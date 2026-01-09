@@ -35,6 +35,7 @@ const api = {
     list: (): Promise<BackupInfo[]> => ipcRenderer.invoke('backup:list'),
     restore: (name: string): Promise<RestoreResult> => ipcRenderer.invoke('backup:restore', name),
     delete: (names: string[]): Promise<void> => ipcRenderer.invoke('backup:delete', names),
+    download: (name: string): Promise<string | null> => ipcRenderer.invoke('backup:download', name),
     export: (): Promise<string | null> => ipcRenderer.invoke('backup:export'),
     import: (): Promise<boolean> => ipcRenderer.invoke('backup:import'),
   },

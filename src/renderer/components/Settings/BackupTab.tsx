@@ -15,6 +15,12 @@ const TrashIcon = () => (
   </svg>
 )
 
+const DownloadIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+  </svg>
+)
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -100,6 +106,17 @@ export default function BackupTab() {
       setToast({ message: 'Errore durante l\'eliminazione', type: 'error' })
     } finally {
       setShowDeleteModal(false)
+    }
+  }
+
+  const handleDownload = async (backupName: string) => {
+    try {
+      const result = await window.api.backup.download(backupName)
+      if (result) {
+        setToast({ message: 'Backup scaricato con successo', type: 'success' })
+      }
+    } catch (err) {
+      setToast({ message: 'Errore durante il download', type: 'error' })
     }
   }
 
@@ -205,7 +222,14 @@ export default function BackupTab() {
                   <td className="px-4 py-3 text-sm font-mono text-[var(--text-primary)]">{backup.name}</td>
                   <td className="px-4 py-3 text-sm text-[var(--text-secondary)]">{formatDate(backup.date)}</td>
                   <td className="px-4 py-3 text-sm text-[var(--text-secondary)]">{formatFileSize(backup.size)}</td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-2">
+                    <button
+                      onClick={() => handleDownload(backup.name)}
+                      className="btn btn-ghost text-xs py-1.5 px-2"
+                      title="Scarica"
+                    >
+                      <DownloadIcon />
+                    </button>
                     <button
                       onClick={() => setRestoreTarget(backup)}
                       className="btn btn-secondary text-xs py-1.5 px-3"

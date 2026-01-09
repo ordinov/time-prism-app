@@ -1,6 +1,6 @@
 import { ipcMain, dialog } from 'electron'
 import { getDatabase } from './database'
-import { createBackup, listBackups, restoreBackup, exportBackup, importBackup, deleteBackups, createManualBackup } from './backup'
+import { createBackup, listBackups, restoreBackup, exportBackup, importBackup, deleteBackups, createManualBackup, downloadBackup } from './backup'
 import type {
   Client, Project, Session,
   CreateClientInput, UpdateClientInput,
@@ -143,6 +143,19 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('backup:createManual', (): string => {
     return createManualBackup()
+  })
+
+  ipcMain.handle('backup:download', async (_, backupName: string): Promise<string | null> => {
+    const result = await dialog.showSaveDialog({
+      title: 'Scarica backup',
+      defaultPath: backupName,
+      filters: [{ name: 'SQLite Database', extensions: ['db'] }]
+    })
+    if (!result.canceled && result.filePath) {
+      downloadBackup(backupName, result.filePath)
+      return result.filePath
+    }
+    return null
   })
 
   ipcMain.handle('backup:export', async (): Promise<string | null> => {

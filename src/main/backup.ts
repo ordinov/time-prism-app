@@ -122,6 +122,17 @@ export function deleteBackups(names: string[]): void {
   }
 }
 
+export function downloadBackup(backupName: string, destinationPath: string): void {
+  const backupDir = getBackupDir()
+  const backupPath = path.join(backupDir, backupName)
+
+  if (!fs.existsSync(backupPath)) {
+    throw new Error('Backup file does not exist')
+  }
+
+  fs.copyFileSync(backupPath, destinationPath)
+}
+
 export function exportBackup(destinationPath: string): void {
   const dbPath = getDbPath()
   if (!fs.existsSync(dbPath)) {
