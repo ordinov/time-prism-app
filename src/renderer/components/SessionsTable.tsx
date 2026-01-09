@@ -122,6 +122,7 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(null)
   const calendarButtonRef = useRef<HTMLButtonElement>(null)
   const calendarRef = useRef<HTMLDivElement>(null)
+  const newRowRef = useRef<HTMLTableRowElement>(null)
 
   // Sort sessions
   const sortedSessions = useMemo(() => {
@@ -290,6 +291,40 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
       document.removeEventListener('click', handleClickOutside)
     }
   }, [calendarOpen])
+
+  // Handle ESC key and click outside for new row
+  useEffect(() => {
+    if (!newRow) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setNewRow(null)
+      }
+    }
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node
+      // Don't cancel if clicking on calendar
+      if (calendarRef.current?.contains(target)) return
+      // Don't cancel if clicking inside the new row
+      if (newRowRef.current?.contains(target)) return
+      // Cancel the new row
+      setNewRow(null)
+      setCalendarOpen(null)
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    // Use a small delay to avoid immediate cancellation when clicking the button
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 100)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      clearTimeout(timeoutId)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [newRow])
 
   // Open calendar at button position
   const openCalendar = (type: 'edit' | 'new', buttonElement: HTMLButtonElement) => {
@@ -692,7 +727,7 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           <tbody>
             {/* New row being created */}
             {newRow && (
-              <tr className="border-b border-[var(--border-subtle)] bg-[var(--prism-violet)]/5">
+              <tr ref={newRowRef} className="border-b border-[var(--border-subtle)] bg-[var(--prism-violet)]/5">
                 {/* Cliente - derived from project */}
                 <td className="px-3 py-2 min-w-[150px] text-[var(--text-muted)]">
                   {newRowProject?.client_name || '—'}
