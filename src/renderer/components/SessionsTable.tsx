@@ -18,6 +18,14 @@ interface EditingCell {
   field: 'project' | 'date' | 'start' | 'end' | 'notes'
 }
 
+interface NewRowData {
+  projectId: number | null
+  date: string  // YYYY-MM-DD format
+  start: string // HH:MM format
+  end: string   // HH:MM format
+  notes: string
+}
+
 interface Props {
   sessions: SessionWithProject[]
   projects: ProjectWithClient[]
@@ -71,7 +79,8 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   const [deleteModal, setDeleteModal] = useState<{ session: SessionWithProject } | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
+  const [newRow, setNewRow] = useState<NewRowData | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const [validationError, setValidationError] = useState<number | null>(null)
 
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(null)
@@ -283,26 +292,70 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     }
   }
 
-  // Create new session on the selected date
-  const handleCreate = async () => {
+  // Initialize new row with pre-filled date and start time
+  const handleStartCreate = () => {
     if (projects.length === 0) return
+    if (newRow) return // Already creating
 
-    // Use current time but on the selected date
     const now = new Date()
-    const start = new Date(currentDate)
-    start.setHours(now.getHours(), 0, 0, 0)
-    const end = new Date(start)
-    end.setHours(end.getHours() + 1)
+    const dateStr = currentDate.toISOString().split('T')[0]
+    const startStr = `${now.getHours().toString().padStart(2, '0')}:00`
+
+    setNewRow({
+      projectId: null,
+      date: dateStr,
+      start: startStr,
+      end: '',
+      notes: ''
+    })
+  }
+
+  // Check if new row is valid (can be saved)
+  const isNewRowValid = newRow && newRow.projectId !== null && newRow.end !== ''
+
+  // Save the new row
+  const handleSaveNewRow = async () => {
+    if (!newRow || !isNewRowValid) return
+
+    const [startHours, startMinutes] = newRow.start.split(':').map(Number)
+    const [endHours, endMinutes] = newRow.end.split(':').map(Number)
+
+    const startDate = new Date(newRow.date)
+    startDate.setHours(startHours, startMinutes, 0, 0)
+
+    const endDate = new Date(newRow.date)
+    endDate.setHours(endHours, endMinutes, 0, 0)
+
+    // Validate end > start
+    if (endDate.getTime() <= startDate.getTime()) {
+      return // Invalid time range
+    }
 
     try {
-      setIsCreating(true)
-      await onCreate(projects[0].id, start.toISOString(), end.toISOString())
+      setIsSaving(true)
+      await onCreate(
+        newRow.projectId!,
+        startDate.toISOString(),
+        endDate.toISOString(),
+        newRow.notes || undefined
+      )
+      setNewRow(null)
     } catch (err) {
       console.error('Failed to create session:', err)
     } finally {
-      setIsCreating(false)
+      setIsSaving(false)
     }
   }
+
+  // Cancel new row creation
+  const handleCancelNewRow = () => {
+    setNewRow(null)
+  }
+
+  // Get selected project for new row
+  const newRowProject = newRow?.projectId
+    ? projects.find(p => p.id === newRow.projectId)
+    : null
 
   // Delete session
   const handleDelete = async (id: number) => {
@@ -433,8 +486,8 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           {sessions.length} sessioni
         </h3>
         <button
-          onClick={handleCreate}
-          disabled={isCreating || projects.length === 0}
+          onClick={handleStartCreate}
+          disabled={newRow !== null || projects.length === 0}
           className="btn btn-primary text-sm py-1.5 px-3"
         >
           + Nuova sessione
@@ -522,6 +575,107 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
             </tr>
           </thead>
           <tbody>
+            {/* New row being created */}
+            {newRow && (
+              <tr className="border-b border-[var(--border-subtle)] bg-[var(--prism-violet)]/5">
+                {/* Cliente - derived from project */}
+                <td className="px-3 py-2 min-w-[150px] text-[var(--text-muted)]">
+                  {newRowProject?.client_name || '—'}
+                </td>
+                {/* Progetto - select */}
+                <td className="min-w-[200px] px-1">
+                  <select
+                    value={newRow.projectId ?? ''}
+                    onChange={e => setNewRow({ ...newRow, projectId: e.target.value ? parseInt(e.target.value) : null })}
+                    className={`select w-full py-1 text-sm ${!newRow.projectId ? 'text-[var(--text-muted)]' : ''}`}
+                  >
+                    <option value="">Seleziona progetto...</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} {p.client_name ? `(${p.client_name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                {/* Data - pre-filled */}
+                <td className="min-w-[120px] px-1">
+                  <input
+                    type="date"
+                    value={newRow.date}
+                    onChange={e => setNewRow({ ...newRow, date: e.target.value })}
+                    className="input py-1 text-sm w-full"
+                  />
+                </td>
+                {/* Inizio - pre-filled */}
+                <td className="min-w-[80px] px-1">
+                  <input
+                    type="time"
+                    value={newRow.start}
+                    onChange={e => setNewRow({ ...newRow, start: e.target.value })}
+                    className="input py-1 text-sm font-mono w-full"
+                  />
+                </td>
+                {/* Fine - empty */}
+                <td className="min-w-[80px] px-1">
+                  <input
+                    type="time"
+                    value={newRow.end}
+                    onChange={e => setNewRow({ ...newRow, end: e.target.value })}
+                    className={`input py-1 text-sm font-mono w-full ${!newRow.end ? 'border-[var(--warning)]' : ''}`}
+                    placeholder="--:--"
+                  />
+                </td>
+                {/* Note - optional */}
+                <td className="min-w-[150px] px-1">
+                  <input
+                    type="text"
+                    value={newRow.notes}
+                    onChange={e => setNewRow({ ...newRow, notes: e.target.value })}
+                    placeholder="Note..."
+                    className="input py-1 text-sm w-full"
+                  />
+                </td>
+                {/* Ore - calculated or empty */}
+                <td className="px-3 py-2 text-right font-mono text-[var(--text-muted)] bg-[var(--bg-overlay)]">
+                  {newRow.start && newRow.end ? (() => {
+                    const [sh, sm] = newRow.start.split(':').map(Number)
+                    const [eh, em] = newRow.end.split(':').map(Number)
+                    const hours = (eh * 60 + em - sh * 60 - sm) / 60
+                    return hours > 0 ? formatHours(hours) : '—'
+                  })() : '—'}
+                </td>
+                {/* Giorni - calculated or empty */}
+                <td className="px-3 py-2 text-right font-mono text-[var(--text-muted)] bg-[var(--bg-overlay)]">
+                  {newRow.start && newRow.end ? (() => {
+                    const [sh, sm] = newRow.start.split(':').map(Number)
+                    const [eh, em] = newRow.end.split(':').map(Number)
+                    const hours = (eh * 60 + em - sh * 60 - sm) / 60
+                    return hours > 0 ? (hours / 8).toFixed(2) : '—'
+                  })() : '—'}
+                </td>
+                {/* Actions */}
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleSaveNewRow}
+                      disabled={!isNewRowValid || isSaving}
+                      className={`btn btn-ghost btn-icon text-xs ${isNewRowValid ? 'text-[var(--success)] hover:bg-[var(--success)]/10' : 'text-[var(--text-muted)] cursor-not-allowed'}`}
+                      title="Salva"
+                    >
+                      ✓
+                    </button>
+                    <button
+                      onClick={handleCancelNewRow}
+                      className="btn btn-ghost btn-icon text-xs text-[var(--text-muted)] hover:text-[var(--error)]"
+                      title="Annulla"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+
             {sortedSessions.map((session) => {
               const hours = calculateHours(session.start_at, session.end_at)
               const days = calculateDays(hours)
@@ -561,7 +715,7 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
         </table>
 
         {/* Empty state */}
-        {sessions.length === 0 && (
+        {sessions.length === 0 && !newRow && (
           <div className="flex flex-col items-center justify-center py-12 text-[var(--text-muted)]">
             <p className="text-lg">Nessuna sessione</p>
             <p className="text-sm mt-1">Crea la tua prima sessione</p>
