@@ -16,6 +16,12 @@ const TrashIcon = () => (
   </svg>
 )
 
+const ExpandIcon = () => (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+  </svg>
+)
+
 // Types
 type SortKey = 'client' | 'project' | 'date' | 'start' | 'end' | 'notes' | 'hours' | 'days'
 type SortDirection = 'asc' | 'desc'
@@ -113,6 +119,7 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
   const [validationError, setValidationError] = useState<number | null>(null)
   const [calendarOpen, setCalendarOpen] = useState<'edit' | 'new' | null>(null)
   const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0 })
+  const [noteViewModal, setNoteViewModal] = useState<{ note: string } | null>(null)
 
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(null)
   const calendarRef = useRef<HTMLDivElement>(null)
@@ -244,9 +251,13 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
   // Handle click outside for editing
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (editingCell && inputRef.current && !inputRef.current.contains(e.target as Node)) {
-        saveEdit()
-      }
+      if (!editingCell) return
+      const target = e.target as Node
+      // Don't close if clicking inside the input
+      if (inputRef.current?.contains(target)) return
+      // Don't close if clicking inside the calendar
+      if (calendarRef.current?.contains(target)) return
+      saveEdit()
     }
 
     document.addEventListener('mousedown', handleClickOutside)
@@ -607,11 +618,28 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           </div>
         )
       case 'notes':
+        const hasNewlines = session.notes?.includes('\n')
         return (
-          <div onClick={() => startEdit(session, field)} className={`${cellClasses} max-w-[200px] xl:max-w-[400px] 2xl:max-w-[600px]`}>
-            <span className={`block truncate ${session.notes ? '' : 'text-[var(--text-muted)]'}`} title={session.notes || ''}>
-              {session.notes || '—'}
+          <div className={`${cellClasses} max-w-[200px] xl:max-w-[400px] 2xl:max-w-[600px] flex items-center gap-2`}>
+            <span
+              onClick={() => startEdit(session, field)}
+              className={`block truncate flex-1 ${session.notes ? '' : 'text-[var(--text-muted)]'}`}
+              title={session.notes || ''}
+            >
+              {session.notes?.split('\n')[0] || '—'}
             </span>
+            {hasNewlines && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setNoteViewModal({ note: session.notes! })
+                }}
+                className="flex-shrink-0 p-1 rounded hover:bg-white/10 transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                title="Visualizza nota completa"
+              >
+                <ExpandIcon />
+              </button>
+            )}
           </div>
         )
     }
