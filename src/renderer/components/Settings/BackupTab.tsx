@@ -355,40 +355,34 @@ export default function BackupTab() {
         {/* Retention Settings */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div>
-            <label className="text-xs text-[var(--text-secondary)] block mb-1">Giornalieri</label>
-            <select
+            <label className="text-xs text-[var(--text-secondary)] block mb-1">Max giornalieri</label>
+            <input
+              type="number"
+              min={1}
               value={config.maxDaily}
-              onChange={e => setConfig({ ...config, maxDaily: parseInt(e.target.value, 10) })}
-              className="select py-1 text-sm"
-            >
-              {[1, 2, 3, 5, 7, 10].map(n => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+              onChange={e => setConfig({ ...config, maxDaily: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+              className="input py-1 px-2 text-sm w-full"
+            />
           </div>
           <div>
-            <label className="text-xs text-[var(--text-secondary)] block mb-1">Settimanali</label>
-            <select
+            <label className="text-xs text-[var(--text-secondary)] block mb-1">Max settimanali</label>
+            <input
+              type="number"
+              min={1}
               value={config.maxWeekly}
-              onChange={e => setConfig({ ...config, maxWeekly: parseInt(e.target.value, 10) })}
-              className="select py-1 text-sm"
-            >
-              {[1, 2, 4, 6, 8, 12].map(n => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+              onChange={e => setConfig({ ...config, maxWeekly: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+              className="input py-1 px-2 text-sm w-full"
+            />
           </div>
           <div>
-            <label className="text-xs text-[var(--text-secondary)] block mb-1">Mensili</label>
-            <select
+            <label className="text-xs text-[var(--text-secondary)] block mb-1">Max mensili</label>
+            <input
+              type="number"
+              min={1}
               value={config.maxMonthly}
-              onChange={e => setConfig({ ...config, maxMonthly: parseInt(e.target.value, 10) })}
-              className="select py-1 text-sm"
-            >
-              {[1, 2, 3, 6, 12, 24].map(n => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
+              onChange={e => setConfig({ ...config, maxMonthly: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+              className="input py-1 px-2 text-sm w-full"
+            />
           </div>
           <div>
             <label className="text-xs text-[var(--text-secondary)] block mb-1">Giorno settimanale</label>
