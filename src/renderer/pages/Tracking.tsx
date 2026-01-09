@@ -7,22 +7,48 @@ import { useProjects } from '../hooks/useProjects'
 import type { SessionWithProject } from '@shared/types'
 
 type Tab = 'track' | 'tabella'
+type ViewMode = 'day' | 'week' | 'month'
 
 export default function Tracking() {
   const [tab, setTab] = useState<Tab>('track')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [viewMode, setViewMode] = useState<ViewMode>('day')
 
-  // Date range for table view: entire selected day
+  // Date range based on view mode
   const { start_date, end_date } = useMemo(() => {
     const start = new Date(currentDate)
-    start.setHours(0, 0, 0, 0)
     const end = new Date(currentDate)
-    end.setHours(23, 59, 59, 999)
+
+    switch (viewMode) {
+      case 'day':
+        start.setHours(0, 0, 0, 0)
+        end.setHours(23, 59, 59, 999)
+        break
+      case 'week':
+        // Start of week (Monday)
+        const dayOfWeek = start.getDay()
+        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Monday = 0
+        start.setDate(start.getDate() - diff)
+        start.setHours(0, 0, 0, 0)
+        // End of week (Sunday)
+        end.setDate(start.getDate() + 6)
+        end.setHours(23, 59, 59, 999)
+        break
+      case 'month':
+        // Start of month
+        start.setDate(1)
+        start.setHours(0, 0, 0, 0)
+        // End of month
+        end.setMonth(end.getMonth() + 1, 0)
+        end.setHours(23, 59, 59, 999)
+        break
+    }
+
     return {
       start_date: start.toISOString(),
       end_date: end.toISOString()
     }
-  }, [currentDate])
+  }, [currentDate, viewMode])
 
   const { sessions, create, update, remove } = useSessions({ start_date, end_date })
   const { projects } = useProjects()
@@ -50,18 +76,38 @@ export default function Tracking() {
     await remove(id)
   }
 
-  // Date navigation handlers
-  const handlePrevDay = useCallback(() => {
+  // Date navigation handlers based on view mode
+  const handlePrev = useCallback(() => {
     const newDate = new Date(currentDate)
-    newDate.setDate(newDate.getDate() - 1)
+    switch (viewMode) {
+      case 'day':
+        newDate.setDate(newDate.getDate() - 1)
+        break
+      case 'week':
+        newDate.setDate(newDate.getDate() - 7)
+        break
+      case 'month':
+        newDate.setMonth(newDate.getMonth() - 1)
+        break
+    }
     setCurrentDate(newDate)
-  }, [currentDate])
+  }, [currentDate, viewMode])
 
-  const handleNextDay = useCallback(() => {
+  const handleNext = useCallback(() => {
     const newDate = new Date(currentDate)
-    newDate.setDate(newDate.getDate() + 1)
+    switch (viewMode) {
+      case 'day':
+        newDate.setDate(newDate.getDate() + 1)
+        break
+      case 'week':
+        newDate.setDate(newDate.getDate() + 7)
+        break
+      case 'month':
+        newDate.setMonth(newDate.getMonth() + 1)
+        break
+    }
     setCurrentDate(newDate)
-  }, [currentDate])
+  }, [currentDate, viewMode])
 
   const handleToday = useCallback(() => {
     setCurrentDate(new Date())
@@ -106,9 +152,11 @@ export default function Tracking() {
             <div className="px-4 py-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
               <DateNavHeader
                 currentDate={currentDate}
+                viewMode={viewMode}
                 onDateChange={setCurrentDate}
-                onPrev={handlePrevDay}
-                onNext={handleNextDay}
+                onViewModeChange={setViewMode}
+                onPrev={handlePrev}
+                onNext={handleNext}
                 onToday={handleToday}
               />
             </div>
