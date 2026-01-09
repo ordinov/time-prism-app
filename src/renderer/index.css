@@ -125,6 +125,7 @@ body {
 /* Borders */
 .border-subtle { border-color: var(--border-subtle); }
 .border-default { border-color: var(--border-default); }
+.border-prism-violet { border-color: var(--prism-violet); }
 
 /* Gradients */
 .gradient-prism {
