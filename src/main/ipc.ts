@@ -99,16 +99,16 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('db:sessions:create', (_, input: CreateSessionInput): Session => {
     const db = getDatabase()
     const result = db.prepare(
-      'INSERT INTO sessions (project_id, start_at, end_at) VALUES (?, ?, ?)'
-    ).run(input.project_id, input.start_at, input.end_at)
+      'INSERT INTO sessions (project_id, start_at, end_at, notes) VALUES (?, ?, ?, ?)'
+    ).run(input.project_id, input.start_at, input.end_at, input.notes ?? null)
     return db.prepare('SELECT * FROM sessions WHERE id = ?').get(result.lastInsertRowid) as Session
   })
 
   ipcMain.handle('db:sessions:update', (_, input: UpdateSessionInput): Session => {
     const db = getDatabase()
     db.prepare(
-      'UPDATE sessions SET project_id = ?, start_at = ?, end_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).run(input.project_id, input.start_at, input.end_at, input.id)
+      'UPDATE sessions SET project_id = ?, start_at = ?, end_at = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).run(input.project_id, input.start_at, input.end_at, input.notes ?? null, input.id)
     return db.prepare('SELECT * FROM sessions WHERE id = ?').get(input.id) as Session
   })
 
