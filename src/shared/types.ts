@@ -89,3 +89,15 @@ export interface Setting {
 }
 
 export type SettingsMap = Record<string, string>
+
+// Backup
+export interface BackupInfo {
+  name: string
+  date: Date
+  size: number
+}
+
+export interface RestoreResult {
+  success: boolean
+  safetyBackupName: string
+}
