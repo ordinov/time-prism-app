@@ -2,7 +2,7 @@ import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { initDatabase, closeDatabase } from './database'
 import { registerIpcHandlers } from './ipc'
-import { createBackup } from './backup'
+import { startBackupScheduler, stopBackupScheduler } from './backup-scheduler'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -12,6 +12,7 @@ function createWindow(): void {
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    icon: path.join(__dirname, '../../assets/icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -43,12 +44,8 @@ app.whenReady().then(() => {
   initDatabase()
   registerIpcHandlers()
 
-  // Auto backup on startup
-  try {
-    createBackup()
-  } catch (e) {
-    console.error('Failed to create startup backup:', e)
-  }
+  // Start backup scheduler (handles missed backups automatically)
+  startBackupScheduler()
 
   createWindow()
 
@@ -60,6 +57,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  stopBackupScheduler()
   closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()
