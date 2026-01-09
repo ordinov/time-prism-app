@@ -29,7 +29,7 @@ interface Props {
 // Helper functions
 function formatDate(isoString: string): string {
   const date = new Date(isoString)
-  return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 
 function formatTime(isoString: string): string {
