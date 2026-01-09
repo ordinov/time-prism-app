@@ -19,6 +19,7 @@ export interface Session {
   project_id: number
   start_at: string
   end_at: string
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -62,6 +63,7 @@ export interface CreateSessionInput {
   project_id: number
   start_at: string
   end_at: string
+  notes?: string | null
 }
 
 export interface UpdateSessionInput {
@@ -69,6 +71,7 @@ export interface UpdateSessionInput {
   project_id: number
   start_at: string
   end_at: string
+  notes?: string | null
 }
 
 // Query types
