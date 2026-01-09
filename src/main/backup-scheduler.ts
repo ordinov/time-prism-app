@@ -1,5 +1,5 @@
 import { getDatabase } from './database'
-import { createBackup } from './backup'
+import { createBackup, listBackups } from './backup'
 import { DEFAULT_BACKUP_CONFIG, type BackupConfig } from '../shared/types'
 
 let schedulerTimeout: NodeJS.Timeout | null = null
@@ -64,6 +64,14 @@ function getNextScheduledTime(scheduleTimes: string[]): Date | null {
 }
 
 function shouldRunMissedBackup(scheduleTimes: string[]): boolean {
+  // If no auto backups exist at all, run one now
+  const backups = listBackups()
+  const hasAutoBackups = backups.some(b => b.name.startsWith('data_'))
+  if (!hasAutoBackups) {
+    console.log('[BackupScheduler] No automatic backups found')
+    return true
+  }
+
   const db = getDatabase()
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get('backup_last_auto') as { value: string } | undefined
 
