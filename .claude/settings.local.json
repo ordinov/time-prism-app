@@ -22,7 +22,9 @@
       "Bash(tasklist:*)",
       "Skill(superpowers:systematic-debugging)",
       "Bash(npm ls:*)",
-      "Skill(frontend-design:frontend-design)"
+      "Skill(frontend-design:frontend-design)",
+      "Bash(tree:*)",
+      "Bash(git rev-parse:*)"
     ]
   }
 }

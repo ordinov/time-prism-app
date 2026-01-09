@@ -45,6 +45,15 @@ export function initDatabase(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_projects_client_id ON projects(client_id);
   `)
 
+  // Migration: add notes column if not exists
+  const hasNotesColumn = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('sessions') WHERE name='notes'
+  `).get() as { count: number }
+
+  if (hasNotesColumn.count === 0) {
+    db.exec(`ALTER TABLE sessions ADD COLUMN notes TEXT DEFAULT NULL`)
+  }
+
   return db
 }
 

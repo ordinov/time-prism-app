@@ -3,6 +3,7 @@ import TimelineHeader from './TimelineHeader'
 import TimelineRuler from './TimelineRuler'
 import TimelineTrack from './TimelineTrack'
 import TrackRemovalModal from './TrackRemovalModal'
+import SearchableProjectSelect from './SearchableProjectSelect'
 import { useSessions } from '../../hooks/useSessions'
 import { useProjects } from '../../hooks/useProjects'
 import type { ViewMode } from './utils'
@@ -386,20 +387,12 @@ export default function Timeline() {
 
       {/* Add project button - floating outside the timeline container */}
       {availableProjects.length > 0 && (
-        <select
-          className="select text-sm mx-auto bg-[var(--bg-surface)] border-[var(--border-default)]
-                     hover:border-[var(--prism-violet)] transition-colors cursor-pointer"
-          style={{ width: 'fit-content' }}
-          value=""
-          onChange={e => {
-            if (e.target.value) handleAddProject(Number(e.target.value))
-          }}
-        >
-          <option value="">+ Aggiungi progetto</option>
-          {availableProjects.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+        <div className="flex justify-center">
+          <SearchableProjectSelect
+            projects={availableProjects}
+            onSelect={handleAddProject}
+          />
+        </div>
       )}
 
       {/* Track removal modal */}
