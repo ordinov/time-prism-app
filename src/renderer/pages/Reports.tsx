@@ -1,12 +1,26 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
+import DatePicker, { registerLocale } from 'react-datepicker'
+import { it } from 'date-fns/locale'
+import 'react-datepicker/dist/react-datepicker.css'
 import { useSessions } from '../hooks/useSessions'
+import { formatDuration, formatWorkdays } from '../utils/formatters'
+import { calculateSessionDuration } from '../utils/calculations'
+import { parseDateInputValue } from '../utils/dateUtils'
+
+registerLocale('it', it)
 
 type Preset = 'week' | 'month' | '30days' | 'custom'
 
 export default function Reports() {
   const [preset, setPreset] = useState<Preset>('month')
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd] = useState('')
+  const [customStart, setCustomStart] = useState('')  // DD/MM/YY format
+  const [customEnd, setCustomEnd] = useState('')      // DD/MM/YY format
+  const [calendarOpen, setCalendarOpen] = useState<'start' | 'end' | null>(null)
+  const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0 })
+  const calendarRef = useRef<HTMLDivElement>(null)
+  const startInputRef = useRef<HTMLInputElement>(null)
+  const endInputRef = useRef<HTMLInputElement>(null)
 
   const { start_date, end_date } = useMemo(() => {
     const now = new Date()
@@ -29,8 +43,8 @@ export default function Reports() {
         start.setDate(start.getDate() - 30)
         break
       case 'custom':
-        start = customStart ? new Date(customStart) : new Date(now.getFullYear(), now.getMonth(), 1)
-        end = customEnd ? new Date(customEnd) : now
+        start = customStart ? parseDateInputValue(customStart) || new Date(now.getFullYear(), now.getMonth(), 1) : new Date(now.getFullYear(), now.getMonth(), 1)
+        end = customEnd ? parseDateInputValue(customEnd) || now : now
         end.setHours(23, 59, 59, 999)
         break
       default:
@@ -45,11 +59,62 @@ export default function Reports() {
 
   const { sessions, loading } = useSessions({ start_date, end_date })
 
+  // Handle click outside for calendar
+  useEffect(() => {
+    if (!calendarOpen) return
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node
+      const inputRef = calendarOpen === 'start' ? startInputRef : endInputRef
+      if (
+        inputRef.current && !inputRef.current.contains(target) &&
+        calendarRef.current && !calendarRef.current.contains(target)
+      ) {
+        setCalendarOpen(null)
+      }
+    }
+
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 0)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('click', handleClickOutside)
+    }
+  }, [calendarOpen])
+
+  // Open calendar at input position
+  const openCalendar = (type: 'start' | 'end', inputElement: HTMLInputElement) => {
+    const rect = inputElement.getBoundingClientRect()
+    setCalendarPosition({
+      top: rect.bottom + 8,
+      left: rect.left
+    })
+    setCalendarOpen(type)
+  }
+
+  // Handle calendar date selection
+  const handleCalendarSelect = (date: Date | null) => {
+    if (date) {
+      const day = date.getDate().toString().padStart(2, '0')
+      const month = (date.getMonth() + 1).toString().padStart(2, '0')
+      const year = date.getFullYear().toString().slice(-2)
+      const formatted = `${day}/${month}/${year}`
+      if (calendarOpen === 'start') {
+        setCustomStart(formatted)
+      } else {
+        setCustomEnd(formatted)
+      }
+    }
+    setCalendarOpen(null)
+  }
+
   const projectStats = useMemo(() => {
     const stats: Record<number, { name: string; client: string | null; minutes: number }> = {}
 
     sessions.forEach(s => {
-      const duration = (new Date(s.end_at).getTime() - new Date(s.start_at).getTime()) / (1000 * 60)
+      const duration = calculateSessionDuration(s)
       if (!stats[s.project_id]) {
         stats[s.project_id] = { name: s.project_name, client: s.client_name, minutes: 0 }
       }
@@ -64,7 +129,7 @@ export default function Reports() {
 
     sessions.forEach(s => {
       const date = new Date(s.start_at).toLocaleDateString('it-IT')
-      const duration = (new Date(s.end_at).getTime() - new Date(s.start_at).getTime()) / (1000 * 60)
+      const duration = calculateSessionDuration(s)
       stats[date] = (stats[date] || 0) + duration
     })
 
@@ -73,13 +138,6 @@ export default function Reports() {
       .sort((a, b) => new Date(b.date.split('/').reverse().join('-')).getTime() - new Date(a.date.split('/').reverse().join('-')).getTime())
   }, [sessions])
 
-  const formatMinutes = (minutes: number) => {
-    const h = Math.floor(minutes / 60)
-    const m = Math.round(minutes % 60)
-    return `${h}:${m.toString().padStart(2, '0')}`
-  }
-
-  const formatDays = (minutes: number) => (minutes / 60 / 8).toFixed(2)
 
   const totalMinutes = projectStats.reduce((sum, p) => sum + p.minutes, 0)
 
@@ -109,19 +167,25 @@ export default function Reports() {
             <div>
               <label className="text-sm text-secondary block mb-1">Da</label>
               <input
-                type="date"
+                ref={startInputRef}
+                type="text"
                 value={customStart}
                 onChange={e => setCustomStart(e.target.value)}
-                className="input"
+                onClick={(e) => openCalendar('start', e.currentTarget)}
+                placeholder="GG/MM/AA"
+                className="input cursor-pointer"
               />
             </div>
             <div>
               <label className="text-sm text-secondary block mb-1">A</label>
               <input
-                type="date"
+                ref={endInputRef}
+                type="text"
                 value={customEnd}
                 onChange={e => setCustomEnd(e.target.value)}
-                className="input"
+                onClick={(e) => openCalendar('end', e.currentTarget)}
+                placeholder="GG/MM/AA"
+                className="input cursor-pointer"
               />
             </div>
           </>
@@ -145,15 +209,15 @@ export default function Reports() {
                 <tr key={i} className="border-b border-subtle">
                   <td className="py-2">{p.name}</td>
                   <td className="py-2 text-secondary">{p.client || '—'}</td>
-                  <td className="py-2 text-right font-mono">{formatMinutes(p.minutes)}</td>
-                  <td className="py-2 text-right font-mono">{formatDays(p.minutes)}</td>
+                  <td className="py-2 text-right font-mono">{formatDuration(p.minutes)}</td>
+                  <td className="py-2 text-right font-mono">{formatWorkdays(p.minutes)}</td>
                 </tr>
               ))}
               <tr className="font-bold">
                 <td className="py-2">TOTALE</td>
                 <td></td>
-                <td className="py-2 text-right font-mono">{formatMinutes(totalMinutes)}</td>
-                <td className="py-2 text-right font-mono">{formatDays(totalMinutes)}</td>
+                <td className="py-2 text-right font-mono">{formatDuration(totalMinutes)}</td>
+                <td className="py-2 text-right font-mono">{formatWorkdays(totalMinutes)}</td>
               </tr>
             </tbody>
           </table>
@@ -173,14 +237,36 @@ export default function Reports() {
               {dateStats.map((d, i) => (
                 <tr key={i} className="border-b border-subtle">
                   <td className="py-2">{d.date}</td>
-                  <td className="py-2 text-right font-mono">{formatMinutes(d.minutes)}</td>
-                  <td className="py-2 text-right font-mono">{formatDays(d.minutes)}</td>
+                  <td className="py-2 text-right font-mono">{formatDuration(d.minutes)}</td>
+                  <td className="py-2 text-right font-mono">{formatWorkdays(d.minutes)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Calendar portal */}
+      {calendarOpen && createPortal(
+        <div
+          ref={calendarRef}
+          className="fixed z-[9999] animate-scale-in"
+          style={{ top: calendarPosition.top, left: calendarPosition.left }}
+        >
+          <DatePicker
+            selected={(() => {
+              const dateStr = calendarOpen === 'start' ? customStart : customEnd
+              if (!dateStr) return new Date()
+              const parsed = parseDateInputValue(dateStr)
+              return parsed || new Date()
+            })()}
+            onChange={handleCalendarSelect}
+            inline
+            locale="it"
+          />
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

@@ -1,7 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useProjects } from '../hooks/useProjects'
 import { useClients } from '../hooks/useClients'
-import type { ProjectWithClient } from '@shared/types'
+import { useToast } from '../context/ToastContext'
+import ConfirmModal from '../components/ConfirmModal'
+import type { ProjectWithStats } from '@shared/types'
+import { formatDuration, formatWorkdays } from '../utils/formatters'
 
 // Icons
 const PlusIcon = () => (
@@ -55,6 +59,8 @@ const CheckIcon = () => (
 const DEFAULT_COLOR = '#8B5CF6'
 
 export default function Projects() {
+  const navigate = useNavigate()
+  const { showToast } = useToast()
   const [showArchived, setShowArchived] = useState(false)
   const { projects, loading, error, create, update, remove, archive } = useProjects(showArchived)
   const { clients } = useClients()
@@ -68,6 +74,7 @@ export default function Projects() {
   const [formClientId, setFormClientId] = useState<number | null>(null)
   const [formColor, setFormColor] = useState(DEFAULT_COLOR)
   const [copied, setCopied] = useState(false)
+  const [deleteModal, setDeleteModal] = useState<{ project: ProjectWithStats } | null>(null)
 
   const filteredProjects = projects.filter(p => {
     // When showArchived is checked, show ONLY archived projects
@@ -107,25 +114,35 @@ export default function Projects() {
 
   const handleCreate = async () => {
     if (!formName.trim()) return
-    await create({ name: formName.trim(), client_id: formClientId, color: formColor })
-    resetForm()
+    try {
+      await create({ name: formName.trim(), client_id: formClientId, color: formColor })
+      showToast('Progetto creato', 'success')
+      resetForm()
+    } catch (err) {
+      showToast('Errore nella creazione del progetto', 'error')
+    }
   }
 
   const handleUpdate = async () => {
     if (!formName.trim() || !editingId) return
     const project = projects.find(p => p.id === editingId)
     if (!project) return
-    await update({
-      id: editingId,
-      name: formName.trim(),
-      client_id: formClientId,
-      color: formColor,
-      archived: project.archived
-    })
-    resetForm()
+    try {
+      await update({
+        id: editingId,
+        name: formName.trim(),
+        client_id: formClientId,
+        color: formColor,
+        archived: project.archived
+      })
+      showToast('Progetto aggiornato', 'success')
+      resetForm()
+    } catch (err) {
+      showToast('Errore nell\'aggiornamento del progetto', 'error')
+    }
   }
 
-  const startEdit = (project: ProjectWithClient) => {
+  const startEdit = (project: ProjectWithStats) => {
     setEditingId(project.id)
     setFormName(project.name)
     setFormClientId(project.client_id)
@@ -133,9 +150,23 @@ export default function Projects() {
     setIsAdding(false)
   }
 
+
   const handleDelete = async (id: number) => {
-    if (confirm('Eliminare questo progetto?')) {
+    try {
       await remove(id)
+      showToast('Progetto eliminato', 'success')
+      setDeleteModal(null)
+    } catch (err) {
+      showToast('Errore nell\'eliminazione del progetto', 'error')
+    }
+  }
+
+  const handleArchive = async (project: ProjectWithStats) => {
+    try {
+      await archive(project)
+      showToast(project.archived ? 'Progetto ripristinato' : 'Progetto archiviato', 'success')
+    } catch (err) {
+      showToast('Errore nell\'archiviazione del progetto', 'error')
     }
   }
 
@@ -219,36 +250,12 @@ export default function Projects() {
           key="new"
           className="card p-5 mb-6 space-y-4 animate-scale-in"
         >
-          <div>
-            <label className="text-sm text-[var(--text-muted)] mb-2 block">Nome progetto</label>
-            <input
-              type="text"
-              placeholder="Nome progetto"
-              value={formName}
-              onChange={e => setFormName(e.target.value)}
-              className="input"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="text-sm text-[var(--text-muted)] mb-2 block">Cliente</label>
-            <select
-              value={formClientId ?? ''}
-              onChange={e => setFormClientId(e.target.value ? Number(e.target.value) : null)}
-              className="select"
-            >
-              <option value="">Nessun cliente</option>
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Color picker */}
-          <div>
-            <label className="text-sm text-[var(--text-muted)] mb-2 block">Colore</label>
-            <div className="flex items-center gap-3">
-              <div className="relative">
+          {/* Color, Name, Client - same row */}
+          <div className="flex items-end gap-4">
+            {/* Color picker */}
+            <div className="flex-shrink-0">
+              <label className="text-sm text-[var(--text-muted)] mb-2 block">Colore</label>
+              <div className="flex items-center gap-2">
                 <input
                   type="color"
                   value={formColor}
@@ -257,189 +264,262 @@ export default function Projects() {
                              bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0
                              [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-none"
                 />
+                <div className="flex items-center gap-1 bg-[var(--bg-overlay)] rounded-lg border border-[var(--border-default)] px-2 py-2">
+                  <span className="text-[var(--text-muted)] font-mono text-sm">#</span>
+                  <input
+                    type="text"
+                    value={formColor.replace('#', '')}
+                    onChange={e => handleHexInput(e.target.value)}
+                    maxLength={6}
+                    className="w-16 bg-transparent border-none outline-none font-mono text-sm
+                               text-[var(--text-primary)] uppercase tracking-wider"
+                    placeholder="8B5CF6"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={copyColorToClipboard}
+                  className={`btn btn-ghost btn-icon transition-all duration-200 ${
+                    copied ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
+                  }`}
+                  title={copied ? 'Copiato!' : 'Copia HEX'}
+                >
+                  {copied ? <CheckIcon /> : <ClipboardIcon />}
+                </button>
               </div>
-              <div className="flex items-center gap-1 bg-[var(--bg-overlay)] rounded-lg border border-[var(--border-default)] px-3 py-2">
-                <span className="text-[var(--text-muted)] font-mono text-sm">#</span>
-                <input
-                  type="text"
-                  value={formColor.replace('#', '')}
-                  onChange={e => handleHexInput(e.target.value)}
-                  maxLength={6}
-                  className="w-20 bg-transparent border-none outline-none font-mono text-sm
-                             text-[var(--text-primary)] uppercase tracking-wider"
-                  placeholder="8B5CF6"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={copyColorToClipboard}
-                className={`btn btn-ghost btn-icon transition-all duration-200 ${
-                  copied ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
-                }`}
-                title={copied ? 'Copiato!' : 'Copia HEX'}
+            </div>
+
+            {/* Project name */}
+            <div className="flex-1 min-w-0">
+              <label className="text-sm text-[var(--text-muted)] mb-2 block">Nome progetto</label>
+              <input
+                type="text"
+                placeholder="Nome progetto"
+                value={formName}
+                onChange={e => setFormName(e.target.value)}
+                className="input w-full"
+                autoFocus
+              />
+            </div>
+
+            {/* Client */}
+            <div className="flex-1 min-w-0">
+              <label className="text-sm text-[var(--text-muted)] mb-2 block">Cliente</label>
+              <select
+                value={formClientId ?? ''}
+                onChange={e => setFormClientId(e.target.value ? Number(e.target.value) : null)}
+                className="select w-full"
               >
-                {copied ? <CheckIcon /> : <ClipboardIcon />}
-              </button>
+                <option value="">Nessun cliente</option>
+                {clients.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          {/* Buttons - right aligned */}
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={resetForm} className="btn btn-secondary">
+              Annulla
+            </button>
             <button
               onClick={handleCreate}
               className="btn btn-primary"
             >
               Crea progetto
             </button>
-            <button onClick={resetForm} className="btn btn-secondary">
-              Annulla
-            </button>
           </div>
         </div>
       )}
 
-      {/* Projects list */}
-      <div className="space-y-2">
-        {filteredProjects.map(project => (
-          editingId === project.id ? (
-            /* Inline edit form */
-            <div
-              key={project.id}
-              className="card p-5 space-y-4 animate-scale-in"
-            >
-              <div>
-                <label className="text-sm text-[var(--text-muted)] mb-2 block">Nome progetto</label>
-                <input
-                  type="text"
-                  placeholder="Nome progetto"
-                  value={formName}
-                  onChange={e => setFormName(e.target.value)}
-                  className="input"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="text-sm text-[var(--text-muted)] mb-2 block">Cliente</label>
-                <select
-                  value={formClientId ?? ''}
-                  onChange={e => setFormClientId(e.target.value ? Number(e.target.value) : null)}
-                  className="select"
-                >
-                  <option value="">Nessun cliente</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
+      {/* Projects table */}
+      <div className="card overflow-hidden">
+        {/* Table header */}
+        <div className="grid grid-cols-[1fr_1.5fr_100px_100px_100px_auto] gap-4 px-4 py-3
+                        bg-[var(--bg-overlay)] border-b border-[var(--border-subtle)]
+                        text-sm font-medium text-[var(--text-muted)]">
+          <div>Cliente</div>
+          <div>Nome progetto</div>
+          <div className="text-right">Sessioni</div>
+          <div className="text-right">Ore</div>
+          <div className="text-right">Giornate</div>
+          <div className="w-[100px]"></div>
+        </div>
 
-              {/* Color picker */}
-              <div>
-                <label className="text-sm text-[var(--text-muted)] mb-2 block">Colore</label>
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <input
-                      type="color"
-                      value={formColor}
-                      onChange={e => setFormColor(e.target.value.toUpperCase())}
-                      className="w-10 h-10 rounded-lg cursor-pointer border-2 border-[var(--border-default)]
-                                 bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0
-                                 [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-none"
-                    />
+        {/* Table body */}
+        <div className="divide-y divide-[var(--border-subtle)]">
+          {filteredProjects.map(project => (
+            editingId === project.id ? (
+              /* Inline edit form */
+              <div
+                key={project.id}
+                className="p-5 space-y-4 animate-scale-in bg-[var(--bg-surface)]"
+              >
+                {/* Color, Name, Client - same row */}
+                <div className="flex items-end gap-4">
+                  {/* Color picker */}
+                  <div className="flex-shrink-0">
+                    <label className="text-sm text-[var(--text-muted)] mb-2 block">Colore</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={formColor}
+                        onChange={e => setFormColor(e.target.value.toUpperCase())}
+                        className="w-10 h-10 rounded-lg cursor-pointer border-2 border-[var(--border-default)]
+                                   bg-transparent appearance-none [&::-webkit-color-swatch-wrapper]:p-0
+                                   [&::-webkit-color-swatch]:rounded-md [&::-webkit-color-swatch]:border-none"
+                      />
+                      <div className="flex items-center gap-1 bg-[var(--bg-overlay)] rounded-lg border border-[var(--border-default)] px-2 py-2">
+                        <span className="text-[var(--text-muted)] font-mono text-sm">#</span>
+                        <input
+                          type="text"
+                          value={formColor.replace('#', '')}
+                          onChange={e => handleHexInput(e.target.value)}
+                          maxLength={6}
+                          className="w-16 bg-transparent border-none outline-none font-mono text-sm
+                                     text-[var(--text-primary)] uppercase tracking-wider"
+                          placeholder="8B5CF6"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={copyColorToClipboard}
+                        className={`btn btn-ghost btn-icon transition-all duration-200 ${
+                          copied ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
+                        }`}
+                        title={copied ? 'Copiato!' : 'Copia HEX'}
+                      >
+                        {copied ? <CheckIcon /> : <ClipboardIcon />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 bg-[var(--bg-overlay)] rounded-lg border border-[var(--border-default)] px-3 py-2">
-                    <span className="text-[var(--text-muted)] font-mono text-sm">#</span>
+
+                  {/* Project name */}
+                  <div className="flex-1 min-w-0">
+                    <label className="text-sm text-[var(--text-muted)] mb-2 block">Nome progetto</label>
                     <input
                       type="text"
-                      value={formColor.replace('#', '')}
-                      onChange={e => handleHexInput(e.target.value)}
-                      maxLength={6}
-                      className="w-20 bg-transparent border-none outline-none font-mono text-sm
-                                 text-[var(--text-primary)] uppercase tracking-wider"
-                      placeholder="8B5CF6"
+                      placeholder="Nome progetto"
+                      value={formName}
+                      onChange={e => setFormName(e.target.value)}
+                      className="input w-full"
+                      autoFocus
                     />
                   </div>
+
+                  {/* Client */}
+                  <div className="flex-1 min-w-0">
+                    <label className="text-sm text-[var(--text-muted)] mb-2 block">Cliente</label>
+                    <select
+                      value={formClientId ?? ''}
+                      onChange={e => setFormClientId(e.target.value ? Number(e.target.value) : null)}
+                      className="select w-full"
+                    >
+                      <option value="">Nessun cliente</option>
+                      {clients.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Buttons - right aligned */}
+                <div className="flex justify-end gap-2 pt-2">
+                  <button onClick={resetForm} className="btn btn-secondary">
+                    Annulla
+                  </button>
                   <button
-                    type="button"
-                    onClick={copyColorToClipboard}
-                    className={`btn btn-ghost btn-icon transition-all duration-200 ${
-                      copied ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
-                    }`}
-                    title={copied ? 'Copiato!' : 'Copia HEX'}
+                    onClick={handleUpdate}
+                    className="btn btn-primary"
                   >
-                    {copied ? <CheckIcon /> : <ClipboardIcon />}
+                    Aggiorna
                   </button>
                 </div>
               </div>
+            ) : (
+              /* Project row */
+              <div
+                key={project.id}
+                onClick={() => navigate(`/tracking?tab=track&projectId=${project.id}`)}
+                className="grid grid-cols-[1fr_1.5fr_100px_100px_100px_auto] gap-4 px-4 py-3
+                           items-center group hover:bg-[var(--bg-surface)] transition-colors cursor-pointer"
+              >
+                <div className="text-[var(--text-secondary)] truncate">
+                  {project.client_name || <span className="text-[var(--text-muted)]">—</span>}
+                </div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="w-3 h-3 rounded-full ring-2 ring-white/10 flex-shrink-0"
+                    style={{ backgroundColor: project.color }}
+                  />
+                  <span className="font-medium text-[var(--text-primary)] truncate">{project.name}</span>
+                  {project.archived && (
+                    <span className="badge text-[var(--warning)] flex-shrink-0">Archiviato</span>
+                  )}
+                </div>
+                <div className="text-right text-[var(--text-secondary)] tabular-nums">
+                  {project.session_count}
+                </div>
+                <div className="text-right text-[var(--text-secondary)] tabular-nums">
+                  {formatDuration(project.total_minutes || 0)}
+                </div>
+                <div className="text-right text-[var(--text-secondary)] tabular-nums">
+                  {formatWorkdays(project.total_minutes || 0)}
+                </div>
+                <div className="flex gap-1 justify-end w-[100px] opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={e => { e.stopPropagation(); startEdit(project) }}
+                    className="btn btn-ghost btn-icon"
+                    title="Modifica"
+                  >
+                    <PencilIcon />
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleArchive(project) }}
+                    className="btn btn-ghost btn-icon"
+                    title={project.archived ? 'Ripristina' : 'Archivia'}
+                  >
+                    <ArchiveIcon />
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); setDeleteModal({ project }) }}
+                    className="btn btn-ghost btn-icon text-[var(--error)] hover:bg-[var(--error-muted)]"
+                    title="Elimina"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
+              </div>
+            )
+          ))}
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={handleUpdate}
-                  className="btn btn-primary"
-                >
-                  Aggiorna
-                </button>
-                <button onClick={resetForm} className="btn btn-secondary">
-                  Annulla
-                </button>
-              </div>
+          {/* Empty state */}
+          {filteredProjects.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-[var(--text-muted)]">
+              <FolderIcon />
+              <p className="mt-4 text-lg">Nessun progetto trovato</p>
+              <p className="text-sm mt-1">
+                {search || filterClientId ? 'Prova a modificare i filtri' : 'Crea il tuo primo progetto'}
+              </p>
             </div>
-          ) : (
-            /* Project card */
-            <div
-              key={project.id}
-              className="card flex items-center justify-between p-4 group
-                         hover:border-[var(--border-default)] transition-all duration-150"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-3 h-3 rounded-full ring-2 ring-white/10"
-                  style={{ backgroundColor: project.color }}
-                />
-                <span className="font-medium text-[var(--text-primary)]">{project.name}</span>
-                {project.client_name && (
-                  <span className="badge">{project.client_name}</span>
-                )}
-                {project.archived && (
-                  <span className="badge text-[var(--warning)]">Archiviato</span>
-                )}
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => startEdit(project)}
-                  className="btn btn-ghost btn-icon"
-                  title="Modifica"
-                >
-                  <PencilIcon />
-                </button>
-                <button
-                  onClick={() => archive(project)}
-                  className="btn btn-ghost btn-icon"
-                  title={project.archived ? 'Ripristina' : 'Archivia'}
-                >
-                  <ArchiveIcon />
-                </button>
-                <button
-                  onClick={() => handleDelete(project.id)}
-                  className="btn btn-ghost btn-icon text-[var(--error)] hover:bg-[var(--error-muted)]"
-                  title="Elimina"
-                >
-                  <TrashIcon />
-                </button>
-              </div>
-            </div>
-          )
-        ))}
-
-        {/* Empty state */}
-        {filteredProjects.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-[var(--text-muted)]">
-            <FolderIcon />
-            <p className="mt-4 text-lg">Nessun progetto trovato</p>
-            <p className="text-sm mt-1">
-              {search || filterClientId ? 'Prova a modificare i filtri' : 'Crea il tuo primo progetto'}
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteModal && (
+        <ConfirmModal
+          isOpen={true}
+          title="Elimina progetto"
+          message={`Vuoi eliminare il progetto "${deleteModal.project.name}"?`}
+          confirmLabel="Elimina"
+          cancelLabel="Annulla"
+          danger
+          onConfirm={() => handleDelete(deleteModal.project.id)}
+          onClose={() => setDeleteModal(null)}
+        />
+      )}
     </div>
   )
 }

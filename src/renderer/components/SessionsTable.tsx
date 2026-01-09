@@ -4,8 +4,24 @@ import DatePicker, { registerLocale } from 'react-datepicker'
 import { it } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
 import type { SessionWithProject, ProjectWithClient } from '@shared/types'
+import { useToast } from '../context/ToastContext'
 import ConfirmModal from './ConfirmModal'
 import NoteViewModal from './NoteViewModal'
+import {
+  formatDate,
+  formatTime,
+  formatHours,
+} from '../utils/formatters'
+import {
+  isOvernight,
+  toDateInputValue,
+  parseDateInputValue,
+  toTimeInputValue,
+} from '../utils/dateUtils'
+import {
+  calculateSessionHours,
+  calculateWorkdays,
+} from '../utils/calculations'
 
 registerLocale('it', it)
 
@@ -22,12 +38,6 @@ const OvernightIcon = () => (
   </svg>
 )
 
-// Check if session spans overnight (end date > start date)
-function isOvernight(startAt: string, endAt: string): boolean {
-  const start = new Date(startAt)
-  const end = new Date(endAt)
-  return end.getDate() !== start.getDate() || end.getMonth() !== start.getMonth() || end.getFullYear() !== start.getFullYear()
-}
 
 const ExpandIcon = () => (
   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -54,6 +64,7 @@ interface NewRowData {
 
 interface Props {
   sessions: SessionWithProject[]
+  totalSessions?: number
   projects: ProjectWithClient[]
   currentDate: Date
   onUpdate: (session: SessionWithProject) => Promise<void>
@@ -61,67 +72,9 @@ interface Props {
   onDelete: (id: number) => Promise<void>
 }
 
-// Helper functions
-function formatDate(isoString: string): string {
-  const date = new Date(isoString)
-  return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })
-}
 
-function formatTime(isoString: string): string {
-  const date = new Date(isoString)
-  return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-}
-
-function toDateInputValue(isoString: string): string {
-  const date = new Date(isoString)
-  const day = date.getDate().toString().padStart(2, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const year = date.getFullYear().toString().slice(-2)
-  return `${day}/${month}/${year}`
-}
-
-function parseDateInputValue(value: string): Date | null {
-  // Parse DD/MM/YY format
-  const match = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/)
-  if (!match) return null
-  const day = parseInt(match[1])
-  const month = parseInt(match[2]) - 1
-  const year = 2000 + parseInt(match[3])
-  const date = new Date(year, month, day)
-  if (isNaN(date.getTime())) return null
-  return date
-}
-
-function toDateISOValue(dateStr: string): string {
-  // Convert DD/MM/YY to YYYY-MM-DD for storage
-  const date = parseDateInputValue(dateStr)
-  if (!date) return ''
-  return date.toISOString().split('T')[0]
-}
-
-function toTimeInputValue(isoString: string): string {
-  const date = new Date(isoString)
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-}
-
-function calculateHours(startAt: string, endAt: string): number {
-  const start = new Date(startAt).getTime()
-  const end = new Date(endAt).getTime()
-  return (end - start) / (1000 * 60 * 60)
-}
-
-function formatHours(hours: number): string {
-  const totalMinutes = Math.round(hours * 60)
-  const h = Math.floor(totalMinutes / 60)
-  const m = totalMinutes % 60
-  return `${h}:${m.toString().padStart(2, '0')}`
-}
-
-function calculateDays(hours: number): number {
-  return hours / 8
-}
-
-export default function SessionsTable({ sessions, projects, currentDate, onUpdate, onCreate, onDelete }: Props) {
+export default function SessionsTable({ sessions, totalSessions, projects, currentDate, onUpdate, onCreate, onDelete }: Props) {
+  const { showToast } = useToast()
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
@@ -164,8 +117,8 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           break
         case 'hours':
         case 'days':
-          const hoursA = calculateHours(a.start_at, a.end_at)
-          const hoursB = calculateHours(b.start_at, b.end_at)
+          const hoursA = calculateSessionHours(a)
+          const hoursB = calculateSessionHours(b)
           comparison = hoursA - hoursB
           break
       }
@@ -266,10 +219,11 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
 
     try {
       await onUpdate(updatedSession)
+      showToast('Sessione aggiornata', 'success')
     } catch (err) {
-      console.error('Failed to update session:', err)
+      showToast('Errore nell\'aggiornamento della sessione', 'error')
     }
-  }, [editingCell, editValue, sessions, projects, onUpdate])
+  }, [editingCell, editValue, sessions, projects, onUpdate, showToast])
 
   // Handle click outside for editing
   useEffect(() => {
@@ -529,9 +483,10 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
         endDate.toISOString(),
         newRow.notes || undefined
       )
+      showToast('Sessione creata', 'success')
       setNewRow(null)
     } catch (err) {
-      console.error('Failed to create session:', err)
+      showToast('Errore nella creazione della sessione', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -546,9 +501,10 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
   const handleDelete = async (id: number) => {
     try {
       await onDelete(id)
+      showToast('Sessione eliminata', 'success')
       setDeleteModal(null)
     } catch (err) {
-      console.error('Failed to delete session:', err)
+      showToast('Errore nell\'eliminazione della sessione', 'error')
     }
   }
 
@@ -694,7 +650,9 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
       {/* Header with add button */}
       <div className="flex justify-between items-center px-4 py-3 border-b border-[var(--border-subtle)]">
         <h3 className="text-sm font-medium text-[var(--text-secondary)]">
-          {sessions.length} sessioni
+          {totalSessions !== undefined && sessions.length !== totalSessions
+            ? `${sessions.length} di ${totalSessions} sessioni`
+            : `${sessions.length} sessioni`}
         </h3>
         <button
           onClick={handleStartCreate}
@@ -902,8 +860,8 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
             )}
 
             {sortedSessions.map((session) => {
-              const hours = calculateHours(session.start_at, session.end_at)
-              const days = calculateDays(hours)
+              const hours = calculateSessionHours(session)
+              const days = calculateWorkdays(hours)
 
               return (
                 <tr
@@ -940,10 +898,19 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
         </table>
 
         {/* Empty state */}
-        {sessions.length === 0 && !newRow && (
+        {sortedSessions.length === 0 && !newRow && (
           <div className="flex flex-col items-center justify-center py-12 text-[var(--text-muted)]">
-            <p className="text-lg">Nessuna sessione</p>
-            <p className="text-sm mt-1">Crea la tua prima sessione</p>
+            {totalSessions === undefined || totalSessions === 0 ? (
+              <>
+                <p className="text-lg">Nessuna sessione</p>
+                <p className="text-sm mt-1">Crea la tua prima sessione</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg">Nessuna sessione trovata</p>
+                <p className="text-sm mt-1">Prova a modificare i filtri</p>
+              </>
+            )}
           </div>
         )}
       </div>
