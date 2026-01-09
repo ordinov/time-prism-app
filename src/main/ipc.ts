@@ -1,13 +1,14 @@
 import { ipcMain, dialog } from 'electron'
 import { getDatabase } from './database'
 import { createBackup, listBackups, restoreBackup, exportBackup, importBackup, deleteBackups, createManualBackup, downloadBackup } from './backup'
+import { getBackupConfig, setBackupConfig, restartBackupScheduler } from './backup-scheduler'
 import type {
   Client, Project, Session,
   CreateClientInput, UpdateClientInput,
   CreateProjectInput, UpdateProjectInput,
   CreateSessionInput, UpdateSessionInput,
   SessionQuery, ProjectWithClient, SessionWithProject,
-  Setting, SettingsMap
+  Setting, SettingsMap, BackupConfig
 } from '../shared/types'
 
 export function registerIpcHandlers(): void {
@@ -182,6 +183,15 @@ export function registerIpcHandlers(): void {
       return true
     }
     return false
+  })
+
+  ipcMain.handle('backup:getConfig', (): BackupConfig => {
+    return getBackupConfig()
+  })
+
+  ipcMain.handle('backup:setConfig', (_, config: BackupConfig): void => {
+    setBackupConfig(config)
+    restartBackupScheduler()
   })
 
   // Settings
