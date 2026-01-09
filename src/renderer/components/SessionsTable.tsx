@@ -497,11 +497,6 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     }
   }
 
-  // Cancel new row creation
-  const handleCancelNewRow = () => {
-    setNewRow(null)
-  }
-
   // Get selected project for new row
   const newRowProject = newRow?.projectId
     ? projects.find(p => p.id === newRow.projectId)
@@ -827,23 +822,14 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
                 </td>
                 {/* Actions */}
                 <td className="px-2 py-2">
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={handleSaveNewRow}
-                      disabled={!isNewRowValid || isSaving}
-                      className={`btn btn-ghost btn-icon text-xs ${isNewRowValid ? 'text-[var(--success)] hover:bg-[var(--success)]/10' : 'text-[var(--text-muted)] cursor-not-allowed'}`}
-                      title="Salva"
-                    >
-                      ✓
-                    </button>
-                    <button
-                      onClick={handleCancelNewRow}
-                      className="btn btn-ghost btn-icon text-xs text-[var(--text-muted)] hover:text-[var(--error)]"
-                      title="Annulla"
-                    >
-                      ✕
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleSaveNewRow}
+                    disabled={!isNewRowValid || isSaving}
+                    className={`btn btn-ghost btn-icon text-xs ${isNewRowValid ? 'text-[var(--success)] hover:bg-[var(--success)]/10' : 'text-[var(--text-muted)] cursor-not-allowed'}`}
+                    title="Salva"
+                  >
+                    ✓
+                  </button>
                 </td>
               </tr>
             )}
