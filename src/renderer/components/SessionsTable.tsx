@@ -16,6 +16,19 @@ const TrashIcon = () => (
   </svg>
 )
 
+const OvernightIcon = () => (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+  </svg>
+)
+
+// Check if session spans overnight (end date > start date)
+function isOvernight(startAt: string, endAt: string): boolean {
+  const start = new Date(startAt)
+  const end = new Date(endAt)
+  return end.getDate() !== start.getDate() || end.getMonth() !== start.getMonth() || end.getFullYear() !== start.getFullYear()
+}
+
 const ExpandIcon = () => (
   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
@@ -195,12 +208,18 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
         }
         const oldStart = new Date(session.start_at)
         const oldEnd = new Date(session.end_at)
+        // Check if original session was overnight
+        const wasOvernight = oldEnd.getDate() !== oldStart.getDate()
 
         const newStart = new Date(newDate)
         newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0)
 
         const newEnd = new Date(newDate)
         newEnd.setHours(oldEnd.getHours(), oldEnd.getMinutes(), 0, 0)
+        // Preserve overnight relationship
+        if (wasOvernight) {
+          newEnd.setDate(newEnd.getDate() + 1)
+        }
 
         updatedSession.start_at = newStart.toISOString()
         updatedSession.end_at = newEnd.toISOString()
@@ -211,24 +230,27 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
         const newStart = new Date(session.start_at)
         newStart.setHours(hours, minutes, 0, 0)
 
-        if (newStart.getTime() >= new Date(session.end_at).getTime()) {
-          setValidationError(session.id)
-          setEditingCell(null)
-          return
+        // Recalculate end: keep on same date as start, then check if needs next day
+        const endTime = new Date(session.end_at)
+        const newEnd = new Date(newStart)
+        newEnd.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0)
+        if (newEnd.getTime() <= newStart.getTime()) {
+          newEnd.setDate(newEnd.getDate() + 1)
         }
 
         updatedSession.start_at = newStart.toISOString()
+        updatedSession.end_at = newEnd.toISOString()
         break
       }
       case 'end': {
         const [hours, minutes] = editValue.split(':').map(Number)
-        const newEnd = new Date(session.end_at)
+        const startTime = new Date(session.start_at)
+        const newEnd = new Date(startTime)
         newEnd.setHours(hours, minutes, 0, 0)
 
-        if (newEnd.getTime() <= new Date(session.start_at).getTime()) {
-          setValidationError(session.id)
-          setEditingCell(null)
-          return
+        // If end time is before or equal to start time, it's next day
+        if (newEnd.getTime() <= startTime.getTime()) {
+          newEnd.setDate(newEnd.getDate() + 1)
         }
 
         updatedSession.end_at = newEnd.toISOString()
@@ -479,19 +501,6 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
     const parsedDate = parseDateInputValue(newRow.date)
     if (!parsedDate) return
 
-    // Check time range if both times are provided
-    if (newRow.start && newRow.end) {
-      const [startHours, startMinutes] = newRow.start.split(':').map(Number)
-      const [endHours, endMinutes] = newRow.end.split(':').map(Number)
-      const startMinutesTotal = startHours * 60 + startMinutes
-      const endMinutesTotal = endHours * 60 + endMinutes
-
-      if (endMinutesTotal <= startMinutesTotal) {
-        errors.end = true
-        errors.timeRange = true
-      }
-    }
-
     if (Object.keys(errors).length > 0) {
       setNewRowErrors(errors)
       return
@@ -505,6 +514,11 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
 
     const endDate = new Date(parsedDate)
     endDate.setHours(endHours, endMinutes, 0, 0)
+
+    // If end time is before or equal to start time, it means next day
+    if (endDate.getTime() <= startDate.getTime()) {
+      endDate.setDate(endDate.getDate() + 1)
+    }
 
     try {
       setIsSaving(true)
@@ -637,9 +651,15 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
           </div>
         )
       case 'end':
+        const overnight = isOvernight(session.start_at, session.end_at)
         return (
-          <div onClick={() => startEdit(session, field)} className={`${cellClasses} font-mono`}>
+          <div onClick={() => startEdit(session, field)} className={`${cellClasses} font-mono flex items-center gap-1`}>
             {formatTime(session.end_at)}
+            {overnight && (
+              <span className="text-[var(--prism-violet)]" title="Termina il giorno successivo">
+                <OvernightIcon />
+              </span>
+            )}
           </div>
         )
       case 'notes':
@@ -813,16 +833,27 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
                 </td>
                 {/* Fine - empty */}
                 <td className="min-w-[80px] px-1">
-                  <input
-                    type="time"
-                    value={newRow.end}
-                    onChange={e => {
-                      setNewRow({ ...newRow, end: e.target.value })
-                      if (newRowErrors.end) setNewRowErrors(prev => ({ ...prev, end: false, timeRange: false }))
-                    }}
-                    className={`input py-1 text-sm font-mono w-full ${newRowErrors.end ? 'border-[var(--error)] border-2' : ''}`}
-                    placeholder="--:--"
-                  />
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="time"
+                      value={newRow.end}
+                      onChange={e => {
+                        setNewRow({ ...newRow, end: e.target.value })
+                        if (newRowErrors.end) setNewRowErrors(prev => ({ ...prev, end: false, timeRange: false }))
+                      }}
+                      className={`input py-1 text-sm font-mono flex-1 ${newRowErrors.end ? 'border-[var(--error)] border-2' : ''}`}
+                      placeholder="--:--"
+                    />
+                    {newRow.start && newRow.end && (() => {
+                      const [sh, sm] = newRow.start.split(':').map(Number)
+                      const [eh, em] = newRow.end.split(':').map(Number)
+                      return (eh * 60 + em) <= (sh * 60 + sm)
+                    })() && (
+                      <span className="text-[var(--prism-violet)]" title="Termina il giorno successivo">
+                        <OvernightIcon />
+                      </span>
+                    )}
+                  </div>
                 </td>
                 {/* Note - optional */}
                 <td className="min-w-[150px] px-1">
@@ -839,8 +870,10 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
                   {newRow.start && newRow.end ? (() => {
                     const [sh, sm] = newRow.start.split(':').map(Number)
                     const [eh, em] = newRow.end.split(':').map(Number)
-                    const hours = (eh * 60 + em - sh * 60 - sm) / 60
-                    return hours > 0 ? formatHours(hours) : '—'
+                    let minutes = eh * 60 + em - sh * 60 - sm
+                    if (minutes <= 0) minutes += 24 * 60  // overnight
+                    const hours = minutes / 60
+                    return formatHours(hours)
                   })() : '—'}
                 </td>
                 {/* Giorni - calculated or empty */}
@@ -848,8 +881,10 @@ export default function SessionsTable({ sessions, projects, currentDate, onUpdat
                   {newRow.start && newRow.end ? (() => {
                     const [sh, sm] = newRow.start.split(':').map(Number)
                     const [eh, em] = newRow.end.split(':').map(Number)
-                    const hours = (eh * 60 + em - sh * 60 - sm) / 60
-                    return hours > 0 ? (hours / 8).toFixed(2) : '—'
+                    let minutes = eh * 60 + em - sh * 60 - sm
+                    if (minutes <= 0) minutes += 24 * 60  // overnight
+                    const hours = minutes / 60
+                    return (hours / 8).toFixed(2)
                   })() : '—'}
                 </td>
                 {/* Actions */}
