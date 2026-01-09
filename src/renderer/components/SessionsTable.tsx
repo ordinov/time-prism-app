@@ -65,7 +65,7 @@ function getRoundedCurrentHour(): Date {
 
 export default function SessionsTable({ sessions, projects, onUpdate, onCreate, onDelete }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('date')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   const [deleteModal, setDeleteModal] = useState<{ session: SessionWithProject } | null>(null)
