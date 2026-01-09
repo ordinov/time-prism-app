@@ -8,12 +8,6 @@ const TrashIcon = () => (
   </svg>
 )
 
-const PlusIcon = () => (
-  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-  </svg>
-)
-
 // Types
 type SortKey = 'project' | 'date' | 'start' | 'end' | 'notes' | 'hours' | 'days'
 type SortDirection = 'asc' | 'desc'
@@ -40,12 +34,6 @@ function formatDate(isoString: string): string {
 function formatTime(isoString: string): string {
   const date = new Date(isoString)
   return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-}
-
-function parseLocalDate(dateStr: string): Date {
-  // Parse dd/mm/yyyy format
-  const [day, month, year] = dateStr.split('/')
-  return new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
 }
 
 function toDateInputValue(isoString: string): string {
@@ -448,8 +436,7 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
           disabled={isCreating || projects.length === 0}
           className="btn btn-primary text-sm py-1.5 px-3"
         >
-          <PlusIcon />
-          <span>Nuova sessione</span>
+          + Nuova sessione
         </button>
       </div>
 
