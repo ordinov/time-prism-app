@@ -101,3 +101,20 @@ export interface RestoreResult {
   success: boolean
   safetyBackupName: string
 }
+
+// Backup Configuration
+export interface BackupConfig {
+  scheduleTimes: string[]    // ["09:00", "13:00", "18:00"]
+  maxDaily: number           // max daily backups to keep
+  maxWeekly: number          // max weekly backups to keep
+  maxMonthly: number         // max monthly backups to keep
+  weeklyDay: number          // 0=Sun, 1=Mon, ..., 6=Sat
+}
+
+export const DEFAULT_BACKUP_CONFIG: BackupConfig = {
+  scheduleTimes: ['09:00', '13:00', '18:00'],
+  maxDaily: 1,
+  maxWeekly: 2,
+  maxMonthly: 3,
+  weeklyDay: 1  // Monday
+}
