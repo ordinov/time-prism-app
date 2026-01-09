@@ -65,7 +65,7 @@ export default function NoteModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-[var(--bg-elevated)] border border-[var(--border-subtle)]
+      <div className="relative z-10 bg-[var(--bg-elevated)] border border-[var(--border-subtle)]
                       rounded-xl shadow-2xl w-full max-w-md mx-4 animate-scale-in">
         {/* Header */}
         <div className="px-6 py-4 border-b border-[var(--border-subtle)]">

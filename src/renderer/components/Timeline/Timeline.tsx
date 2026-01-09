@@ -428,61 +428,66 @@ export default function Timeline() {
         onZoomOut={handleZoomOut}
       />
 
-      {/* Ruler */}
-      <div className="flex">
+      {/* Content area with resize handle */}
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        {/* Resize handle - full height */}
         <div
-          className="flex-shrink-0 bg-[var(--bg-elevated)] border-r border-[var(--border-subtle)] relative z-10"
-          style={{ width: sidebarWidth }}
-        />
-        {/* Resize handle */}
-        <div
-          className={`w-1 flex-shrink-0 cursor-col-resize hover:bg-[var(--prism-violet)]/50 transition-colors z-20
+          className={`absolute top-0 bottom-0 w-1 cursor-col-resize hover:bg-[var(--prism-violet)]/50 transition-colors z-30
                      ${isResizing ? 'bg-[var(--prism-violet)]' : 'bg-transparent'}`}
+          style={{ left: sidebarWidth }}
           onMouseDown={handleResizeStart}
         />
-        <div className="flex-1 overflow-hidden">
-          <TimelineRuler
-            viewStart={viewStart}
-            viewEnd={viewEnd}
-            viewMode={viewMode}
-            pixelsPerHour={pixelsPerHour}
-            scrollLeft={scrollLeft}
-          />
-        </div>
-      </div>
 
-      {/* Tracks */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {/* Project tracks */}
-        {activeProjects.map(project => (
-          <TimelineTrack
-            key={project.id}
-            projectId={project.id}
-            projectName={project.name}
-            projectColor={project.color}
-            clientName={project.client_name}
-            sessions={sessions.filter(s => s.project_id === project.id)}
-            viewStart={viewStart}
-            pixelsPerHour={pixelsPerHour}
-            totalWidth={totalWidth}
-            scrollLeft={scrollLeft}
-            gridLines={gridLines}
-            nowPosition={nowPosition}
-            sidebarWidth={sidebarWidth}
-            onCreateSession={handleCreateSession}
-            onUpdateSession={handleUpdateSession}
-            onDeleteSession={handleDeleteSession}
-            onRemoveTrack={handleRemoveTrackRequest}
-            onUpdateSessionNote={handleUpdateSessionNote}
+        {/* Ruler */}
+        <div className="flex flex-shrink-0">
+          <div
+            className="flex-shrink-0 bg-[var(--bg-elevated)] border-r border-[var(--border-subtle)]"
+            style={{ width: sidebarWidth }}
           />
-        ))}
-
-        {/* Empty state hint */}
-        {activeProjects.length === 0 && (
-          <div className="flex items-center justify-center py-8 text-[var(--text-muted)]">
-            <p className="text-sm">Seleziona un progetto per iniziare</p>
+          <div className="flex-1 overflow-hidden">
+            <TimelineRuler
+              viewStart={viewStart}
+              viewEnd={viewEnd}
+              viewMode={viewMode}
+              pixelsPerHour={pixelsPerHour}
+              scrollLeft={scrollLeft}
+            />
           </div>
-        )}
+        </div>
+
+        {/* Tracks */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Project tracks */}
+          {activeProjects.map(project => (
+            <TimelineTrack
+              key={project.id}
+              projectId={project.id}
+              projectName={project.name}
+              projectColor={project.color}
+              clientName={project.client_name}
+              sessions={sessions.filter(s => s.project_id === project.id)}
+              viewStart={viewStart}
+              pixelsPerHour={pixelsPerHour}
+              totalWidth={totalWidth}
+              scrollLeft={scrollLeft}
+              gridLines={gridLines}
+              nowPosition={nowPosition}
+              sidebarWidth={sidebarWidth}
+              onCreateSession={handleCreateSession}
+              onUpdateSession={handleUpdateSession}
+              onDeleteSession={handleDeleteSession}
+              onRemoveTrack={handleRemoveTrackRequest}
+              onUpdateSessionNote={handleUpdateSessionNote}
+            />
+          ))}
+
+          {/* Empty state hint */}
+          {activeProjects.length === 0 && (
+            <div className="flex items-center justify-center py-8 text-[var(--text-muted)]">
+              <p className="text-sm">Seleziona un progetto per iniziare</p>
+            </div>
+          )}
+        </div>
       </div>
       </div>
 
