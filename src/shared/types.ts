@@ -63,7 +63,7 @@ export interface CreateSessionInput {
   project_id: number
   start_at: string
   end_at: string
-  notes?: string
+  notes?: string | null
 }
 
 export interface UpdateSessionInput {
