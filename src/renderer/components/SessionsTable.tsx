@@ -120,7 +120,7 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [editingCell, editValue, pendingDelete])
+  }, [editingCell, editValue, pendingDelete, saveEdit])
 
   // Focus input when editing starts
   useEffect(() => {
@@ -257,7 +257,7 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
   }, [editingCell, editValue, sessions, projects, onUpdate])
 
   // Handle key down in edit mode
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = async (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
       saveEdit()
@@ -266,7 +266,7 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
       setValidationError(null)
     } else if (e.key === 'Tab') {
       e.preventDefault()
-      saveEdit()
+      await saveEdit()
       // Move to next cell
       if (editingCell) {
         const session = sessions.find(s => s.id === editingCell.sessionId)
@@ -378,8 +378,7 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
     }`
 
     switch (field) {
-      case 'project': {
-        const project = projects.find(p => p.id === session.project_id)
+      case 'project':
         return (
           <div
             onClick={() => startEdit(session, field)}
@@ -394,7 +393,6 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
             </div>
           </div>
         )
-      }
       case 'date':
         return (
           <div onClick={() => startEdit(session, field)} className={cellClasses}>
