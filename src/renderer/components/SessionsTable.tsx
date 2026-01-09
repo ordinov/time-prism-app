@@ -10,7 +10,7 @@ const TrashIcon = () => (
 )
 
 // Types
-type SortKey = 'project' | 'date' | 'start' | 'end' | 'notes' | 'hours' | 'days'
+type SortKey = 'client' | 'project' | 'date' | 'start' | 'end' | 'notes' | 'hours' | 'days'
 type SortDirection = 'asc' | 'desc'
 
 interface EditingCell {
@@ -87,6 +87,9 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
       let comparison = 0
 
       switch (sortKey) {
+        case 'client':
+          comparison = (a.client_name || '').localeCompare(b.client_name || '')
+          break
         case 'project':
           comparison = a.project_name.localeCompare(b.project_name)
           break
@@ -307,7 +310,7 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
   const handleDelete = async (id: number) => {
     try {
       await onDelete(id)
-      setPendingDelete(null)
+      setDeleteModal(null)
     } catch (err) {
       console.error('Failed to delete session:', err)
     }
@@ -446,6 +449,15 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
           <thead>
             <tr className="border-b border-[var(--border-subtle)] bg-[var(--bg-elevated)]">
               <th
+                onClick={() => handleSort('client')}
+                className="text-left px-3 py-3 font-medium text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] transition-colors select-none"
+              >
+                <span className="flex items-center gap-2">
+                  Cliente
+                  <span className="text-[var(--text-muted)] text-xs">{getSortIndicator('client')}</span>
+                </span>
+              </th>
+              <th
                 onClick={() => handleSort('project')}
                 className="text-left px-3 py-3 font-medium text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] transition-colors select-none"
               >
@@ -521,6 +533,9 @@ export default function SessionsTable({ sessions, projects, onUpdate, onCreate, 
                   key={session.id}
                   className="border-b border-[var(--border-subtle)] hover:bg-white/[0.02] group"
                 >
+                  <td className="px-3 py-2 min-w-[150px] text-[var(--text-secondary)]">
+                    {session.client_name || '—'}
+                  </td>
                   <td className="min-w-[200px]">{renderCell(session, 'project')}</td>
                   <td className="min-w-[120px]">{renderCell(session, 'date')}</td>
                   <td className="min-w-[80px]">{renderCell(session, 'start')}</td>
