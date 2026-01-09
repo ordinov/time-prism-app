@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { SessionWithProject, CreateSessionInput, UpdateSessionInput, SessionQuery } from '@shared/types'
-import { events, SESSION_CREATED } from '../lib/events'
+import { events, SESSION_CREATED, SESSION_UPDATED, SESSION_DELETED } from '../lib/events'
 
 export function useSessions(query: SessionQuery = {}) {
   const [sessions, setSessions] = useState<SessionWithProject[]>([])
@@ -24,32 +24,38 @@ export function useSessions(query: SessionQuery = {}) {
     load()
   }, [load])
 
-  // Listen for session created events (e.g., from timer)
+  // Listen for session events to sync across components
   useEffect(() => {
-    const unsubscribe = events.on(SESSION_CREATED, load)
-    return unsubscribe
+    const unsubscribe1 = events.on(SESSION_CREATED, load)
+    const unsubscribe2 = events.on(SESSION_UPDATED, load)
+    const unsubscribe3 = events.on(SESSION_DELETED, load)
+    return () => {
+      unsubscribe1()
+      unsubscribe2()
+      unsubscribe3()
+    }
   }, [load])
 
   const create = async (input: CreateSessionInput) => {
     const session = await window.api.sessions.create(input)
-    await load()
+    events.emit(SESSION_CREATED)
     return session
   }
 
   const update = async (input: UpdateSessionInput) => {
     const session = await window.api.sessions.update(input)
-    await load()
+    events.emit(SESSION_UPDATED)
     return session
   }
 
   const remove = async (id: number) => {
     await window.api.sessions.delete(id)
-    await load()
+    events.emit(SESSION_DELETED)
   }
 
   const removeByProject = async (projectId: number) => {
     const count = await window.api.sessions.deleteByProject(projectId)
-    await load()
+    events.emit(SESSION_DELETED)
     return count
   }
 
