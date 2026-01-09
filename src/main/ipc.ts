@@ -1,6 +1,6 @@
 import { ipcMain, dialog } from 'electron'
 import { getDatabase } from './database'
-import { createBackup, listBackups, restoreBackup, exportBackup, importBackup } from './backup'
+import { createBackup, listBackups, restoreBackup, exportBackup, importBackup, deleteBackups, createManualBackup } from './backup'
 import type {
   Client, Project, Session,
   CreateClientInput, UpdateClientInput,
@@ -129,12 +129,20 @@ export function registerIpcHandlers(): void {
     return createBackup()
   })
 
-  ipcMain.handle('backup:list', (): { name: string; date: Date }[] => {
+  ipcMain.handle('backup:list', (): { name: string; date: Date; size: number }[] => {
     return listBackups()
   })
 
-  ipcMain.handle('backup:restore', (_, backupName: string): void => {
-    restoreBackup(backupName)
+  ipcMain.handle('backup:restore', (_, backupName: string): { success: boolean; safetyBackupName: string } => {
+    return restoreBackup(backupName)
+  })
+
+  ipcMain.handle('backup:delete', (_, names: string[]): void => {
+    deleteBackups(names)
+  })
+
+  ipcMain.handle('backup:createManual', (): string => {
+    return createManualBackup()
   })
 
   ipcMain.handle('backup:export', async (): Promise<string | null> => {
