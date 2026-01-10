@@ -53,6 +53,13 @@ export const sessionService = {
   },
 
   /**
+   * Count sessions matching filters (for pagination)
+   */
+  async count(query: SessionQuery = {}): Promise<number> {
+    return window.api.sessions.count(query)
+  },
+
+  /**
    * Create a new session with validation
    */
   async create(input: CreateSessionInput): Promise<SessionWithProject> {

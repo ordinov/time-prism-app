@@ -24,6 +24,7 @@ const api = {
   },
   sessions: {
     list: (query?: SessionQuery): Promise<SessionWithProject[]> => ipcRenderer.invoke('db:sessions:list', query),
+    count: (query?: SessionQuery): Promise<number> => ipcRenderer.invoke('db:sessions:count', query),
     create: (input: CreateSessionInput): Promise<Session> => ipcRenderer.invoke('db:sessions:create', input),
     update: (input: UpdateSessionInput): Promise<Session> => ipcRenderer.invoke('db:sessions:update', input),
     delete: (id: number): Promise<void> => ipcRenderer.invoke('db:sessions:delete', id),

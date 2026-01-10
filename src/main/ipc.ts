@@ -39,39 +39,30 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('db:projects:list', (_, includeArchived = false): ProjectWithStats[] => {
     const db = getDatabase()
 
-    // Get projects with client names
-    const projectsQuery = `
-      SELECT p.*, c.name as client_name
+    // Single optimized query with SQL aggregation
+    // Uses LEFT JOIN to include projects with no sessions (count/minutes = 0)
+    // Calculates duration in SQL: (julianday(end_at) - julianday(start_at)) * 24 * 60
+    const sql = `
+      SELECT
+        p.*,
+        c.name as client_name,
+        COALESCE(stats.session_count, 0) as session_count,
+        COALESCE(stats.total_minutes, 0) as total_minutes
       FROM projects p
       LEFT JOIN clients c ON p.client_id = c.id
+      LEFT JOIN (
+        SELECT
+          project_id,
+          COUNT(*) as session_count,
+          SUM((julianday(end_at) - julianday(start_at)) * 24 * 60) as total_minutes
+        FROM sessions
+        GROUP BY project_id
+      ) stats ON p.id = stats.project_id
       ${includeArchived ? '' : 'WHERE p.archived = 0'}
       ORDER BY p.name
     `
-    const projects = db.prepare(projectsQuery).all() as ProjectWithClient[]
 
-    // Get all sessions
-    const sessions = db.prepare('SELECT project_id, start_at, end_at FROM sessions').all() as Array<{
-      project_id: number
-      start_at: string
-      end_at: string
-    }>
-
-    // Calculate stats per project
-    const statsMap = new Map<number, { count: number; minutes: number }>()
-    for (const session of sessions) {
-      const stats = statsMap.get(session.project_id) || { count: 0, minutes: 0 }
-      const duration = (new Date(session.end_at).getTime() - new Date(session.start_at).getTime()) / (1000 * 60)
-      stats.count++
-      stats.minutes += duration
-      statsMap.set(session.project_id, stats)
-    }
-
-    // Merge stats into projects
-    return projects.map(p => ({
-      ...p,
-      session_count: statsMap.get(p.id)?.count || 0,
-      total_minutes: statsMap.get(p.id)?.minutes || 0
-    }))
+    return db.prepare(sql).all() as ProjectWithStats[]
   })
 
   ipcMain.handle('db:projects:create', (_, input: CreateProjectInput): Project => {
@@ -98,35 +89,83 @@ export function registerIpcHandlers(): void {
   // Sessions
   ipcMain.handle('db:sessions:list', (_, query: SessionQuery = {}): SessionWithProject[] => {
     const db = getDatabase()
+
+    // Build WHERE clause
+    const conditions: string[] = ['1=1']
+    const params: unknown[] = []
+
+    // Exclude archived projects by default
+    if (!query.includeArchived) {
+      conditions.push('p.archived = 0')
+    }
+
+    if (query.start_date) {
+      conditions.push('s.end_at > ?')
+      params.push(query.start_date)
+    }
+    if (query.end_date) {
+      conditions.push('s.start_at < ?')
+      params.push(query.end_date)
+    }
+    if (query.project_id) {
+      conditions.push('s.project_id = ?')
+      params.push(query.project_id)
+    }
+
+    const whereClause = conditions.join(' AND ')
+
     let sql = `
       SELECT s.*, p.name as project_name, p.color as project_color, c.name as client_name
       FROM sessions s
       JOIN projects p ON s.project_id = p.id
       LEFT JOIN clients c ON p.client_id = c.id
-      WHERE 1=1
+      WHERE ${whereClause}
+      ORDER BY s.start_at
     `
-    const params: unknown[] = []
 
-    // Exclude archived projects by default
-    if (!query.includeArchived) {
-      sql += ' AND p.archived = 0'
+    // Add pagination if specified
+    if (query.limit !== undefined) {
+      sql += ` LIMIT ${query.limit}`
+      if (query.offset !== undefined) {
+        sql += ` OFFSET ${query.offset}`
+      }
     }
 
+    return db.prepare(sql).all(...params) as SessionWithProject[]
+  })
+
+  // Sessions count (for pagination)
+  ipcMain.handle('db:sessions:count', (_, query: SessionQuery = {}): number => {
+    const db = getDatabase()
+
+    const conditions: string[] = ['1=1']
+    const params: unknown[] = []
+
+    if (!query.includeArchived) {
+      conditions.push('p.archived = 0')
+    }
     if (query.start_date) {
-      sql += ' AND s.end_at > ?'
+      conditions.push('s.end_at > ?')
       params.push(query.start_date)
     }
     if (query.end_date) {
-      sql += ' AND s.start_at < ?'
+      conditions.push('s.start_at < ?')
       params.push(query.end_date)
     }
     if (query.project_id) {
-      sql += ' AND s.project_id = ?'
+      conditions.push('s.project_id = ?')
       params.push(query.project_id)
     }
 
-    sql += ' ORDER BY s.start_at'
-    return db.prepare(sql).all(...params) as SessionWithProject[]
+    const sql = `
+      SELECT COUNT(*) as count
+      FROM sessions s
+      JOIN projects p ON s.project_id = p.id
+      WHERE ${conditions.join(' AND ')}
+    `
+
+    const result = db.prepare(sql).get(...params) as { count: number }
+    return result.count
   })
 
   ipcMain.handle('db:sessions:create', (_, input: CreateSessionInput): Session => {

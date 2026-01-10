@@ -85,6 +85,18 @@ export interface SessionQuery {
   end_date?: string
   project_id?: number
   includeArchived?: boolean
+  // Pagination (optional)
+  limit?: number
+  offset?: number
+}
+
+// Paginated response
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  limit: number
+  offset: number
+  hasMore: boolean
 }
 
 // Settings
