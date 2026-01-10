@@ -1,50 +1,127 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ProjectWithStats, CreateProjectInput, UpdateProjectInput } from '@shared/types'
 import { projectService } from '../services/projectService'
+import { sessionKeys } from './useSessions'
 
+// ============================================
+// Query Keys
+// ============================================
+
+export const projectKeys = {
+  all: ['projects'] as const,
+  lists: () => [...projectKeys.all, 'list'] as const,
+  list: (includeArchived: boolean) => [...projectKeys.lists(), { includeArchived }] as const,
+}
+
+// ============================================
+// Hooks
+// ============================================
+
+/**
+ * Hook to fetch projects with stats
+ * Uses React Query for caching and automatic refetching
+ */
 export function useProjects(includeArchived = false) {
-  const [projects, setProjects] = useState<ProjectWithStats[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
 
-  const load = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await projectService.list(includeArchived)
-      setProjects(data)
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load projects')
-    } finally {
-      setLoading(false)
-    }
-  }, [includeArchived])
+  const {
+    data: projects = [],
+    isLoading: loading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: projectKeys.list(includeArchived),
+    queryFn: () => projectService.list(includeArchived),
+  })
 
-  useEffect(() => {
-    load()
-  }, [load])
+  const createMutation = useMutation({
+    mutationFn: (input: CreateProjectInput) => projectService.create(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+    },
+  })
 
-  const create = async (input: CreateProjectInput) => {
-    const project = await projectService.create(input)
-    await load()
-    return project
+  const updateMutation = useMutation({
+    mutationFn: (input: UpdateProjectInput) => projectService.update(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      // Also invalidate sessions as they contain project info
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => projectService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all })
+    },
+  })
+
+  const archiveMutation = useMutation({
+    mutationFn: (project: ProjectWithStats) => projectService.toggleArchive(project),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+    },
+  })
+
+  return {
+    projects,
+    loading,
+    error: error instanceof Error ? error.message : null,
+    create: createMutation.mutateAsync,
+    update: updateMutation.mutateAsync,
+    remove: deleteMutation.mutateAsync,
+    archive: archiveMutation.mutateAsync,
+    reload: refetch,
+    // Expose mutation states for UI feedback
+    isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
+    isDeleting: deleteMutation.isPending,
+    isArchiving: archiveMutation.isPending,
   }
+}
 
-  const update = async (input: UpdateProjectInput) => {
-    const project = await projectService.update(input)
-    await load()
-    return project
-  }
+/**
+ * Hook to create a project
+ */
+export function useCreateProject() {
+  const queryClient = useQueryClient()
 
-  const remove = async (id: number) => {
-    await projectService.delete(id)
-    await load()
-  }
+  return useMutation({
+    mutationFn: (input: CreateProjectInput) => projectService.create(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+    },
+  })
+}
 
-  const archive = async (project: ProjectWithStats) => {
-    await projectService.toggleArchive(project)
-    await load()
-  }
+/**
+ * Hook to update a project
+ */
+export function useUpdateProject() {
+  const queryClient = useQueryClient()
 
-  return { projects, loading, error, create, update, remove, archive, reload: load }
+  return useMutation({
+    mutationFn: (input: UpdateProjectInput) => projectService.update(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all })
+    },
+  })
+}
+
+/**
+ * Hook to delete a project
+ */
+export function useDeleteProject() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => projectService.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all })
+      queryClient.invalidateQueries({ queryKey: sessionKeys.all })
+    },
+  })
 }

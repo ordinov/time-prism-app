@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { ProjectWithClient } from '@shared/types'
-import { events, SESSION_CREATED } from '../lib/events'
 import { useToast } from './ToastContext'
+import { sessionKeys } from '../hooks/useSessions'
 
 interface TimerState {
   isRunning: boolean
@@ -23,6 +24,7 @@ const STORAGE_KEY = 'time-prism-active-timer'
 const AUTO_SAVE_INTERVAL = 60 // seconds
 
 export function TimerProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const { showToast } = useToast()
   const [state, setState] = useState<TimerState>({
     isRunning: false,
@@ -91,7 +93,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           start_at: state.startTime.toISOString(),
           end_at: endTime.toISOString()
         }).then(() => {
-          events.emit(SESSION_CREATED)
+          queryClient.invalidateQueries({ queryKey: sessionKeys.all })
         }).catch(() => {
           showToast('Errore nel salvataggio automatico della sessione', 'error')
         })
@@ -110,7 +112,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
             startTime: state.startTime!.toISOString(),
             sessionId: session.id
           }))
-          events.emit(SESSION_CREATED)
+          queryClient.invalidateQueries({ queryKey: sessionKeys.all })
         }).catch(() => {
           showToast('Errore nel salvataggio automatico della sessione', 'error')
         })
@@ -157,7 +159,7 @@ export function TimerProvider({ children }: { children: ReactNode }) {
           start_at: state.startTime.toISOString(),
           end_at: endTime.toISOString()
         })
-        events.emit(SESSION_CREATED)
+        queryClient.invalidateQueries({ queryKey: sessionKeys.all })
         showToast('Sessione salvata', 'success')
       } catch {
         showToast('Errore nel salvataggio della sessione', 'error')
