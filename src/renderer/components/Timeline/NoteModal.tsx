@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { formatTimeRange } from './utils'
+import type { ActivityWithProject } from '@shared/types'
 
 interface Props {
   isOpen: boolean
@@ -7,7 +8,9 @@ interface Props {
   startAt: string
   endAt: string
   currentNote: string | null
-  onSave: (sessionId: number, notes: string | null) => void
+  currentActivityId: number | null
+  activities: ActivityWithProject[]
+  onSave: (sessionId: number, notes: string | null, activityId: number | null) => void
   onClose: () => void
 }
 
@@ -17,26 +20,30 @@ export default function NoteModal({
   startAt,
   endAt,
   currentNote,
+  currentActivityId,
+  activities,
   onSave,
   onClose
 }: Props) {
   const [note, setNote] = useState(currentNote ?? '')
+  const [activityId, setActivityId] = useState<number | null>(currentActivityId)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Reset note when modal opens with new session
+  // Reset note and activity when modal opens with new session
   useEffect(() => {
     if (isOpen) {
       setNote(currentNote ?? '')
+      setActivityId(currentActivityId)
       // Focus textarea after render
       setTimeout(() => textareaRef.current?.focus(), 50)
     }
-  }, [isOpen, sessionId, currentNote])
+  }, [isOpen, sessionId, currentNote, currentActivityId])
 
   const handleSave = useCallback(() => {
     const trimmedNote = note.trim()
-    onSave(sessionId, trimmedNote || null)
+    onSave(sessionId, trimmedNote || null, activityId)
     onClose()
-  }, [note, sessionId, onSave, onClose])
+  }, [note, activityId, sessionId, onSave, onClose])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -78,18 +85,45 @@ export default function NoteModal({
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          <textarea
-            ref={textareaRef}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Descrivi l'attività svolta..."
-            className="w-full h-36 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)]
-                       rounded-lg text-[var(--text-primary)] placeholder-[var(--text-muted)]
-                       focus:outline-none focus:border-[var(--prism-violet)] focus:ring-1 focus:ring-[var(--prism-violet)]
-                       resize-none"
-          />
-          <p className="text-xs text-[var(--text-muted)] mt-2">
+        <div className="p-6 space-y-4">
+          {/* Activity select */}
+          <div>
+            <label className="text-sm text-[var(--text-muted)] mb-2 block">
+              Attività (opzionale)
+            </label>
+            <select
+              value={activityId ?? ''}
+              onChange={(e) => setActivityId(e.target.value ? Number(e.target.value) : null)}
+              className="select w-full"
+            >
+              <option value="">Nessuna attività</option>
+              {activities.map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                  {a.project_id ? '' : ' (Globale)'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Notes textarea */}
+          <div>
+            <label className="text-sm text-[var(--text-muted)] mb-2 block">
+              Note (opzionale)
+            </label>
+            <textarea
+              ref={textareaRef}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Descrivi l'attività svolta..."
+              className="w-full h-36 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)]
+                         rounded-lg text-[var(--text-primary)] placeholder-[var(--text-muted)]
+                         focus:outline-none focus:border-[var(--prism-violet)] focus:ring-1 focus:ring-[var(--prism-violet)]
+                         resize-none"
+            />
+          </div>
+
+          <p className="text-xs text-[var(--text-muted)]">
             Ctrl+Enter per salvare, Esc per annullare
           </p>
         </div>
