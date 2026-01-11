@@ -1,10 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
-  Client, Project, Session,
+  Client, Project, Session, Activity,
   CreateClientInput, UpdateClientInput,
   CreateProjectInput, UpdateProjectInput,
   CreateSessionInput, UpdateSessionInput,
-  SessionQuery, ProjectWithStats, SessionWithProject,
+  CreateActivityInput, UpdateActivityInput,
+  SessionQuery, ActivityQuery,
+  ProjectWithStats, SessionWithProject, ActivityWithProject,
   SettingsMap, BackupInfo, RestoreResult, BackupConfig
 } from '../shared/types'
 
@@ -29,6 +31,16 @@ const api = {
     update: (input: UpdateSessionInput): Promise<Session> => ipcRenderer.invoke('db:sessions:update', input),
     delete: (id: number): Promise<void> => ipcRenderer.invoke('db:sessions:delete', id),
     deleteByProject: (projectId: number): Promise<number> => ipcRenderer.invoke('db:sessions:deleteByProject', projectId),
+  },
+  activities: {
+    list: (query?: ActivityQuery): Promise<ActivityWithProject[]> =>
+      ipcRenderer.invoke('db:activities:list', query),
+    create: (input: CreateActivityInput): Promise<Activity> =>
+      ipcRenderer.invoke('db:activities:create', input),
+    update: (input: UpdateActivityInput): Promise<Activity> =>
+      ipcRenderer.invoke('db:activities:update', input),
+    delete: (id: number): Promise<void> =>
+      ipcRenderer.invoke('db:activities:delete', id),
   },
   backup: {
     create: (): Promise<string> => ipcRenderer.invoke('backup:create'),
