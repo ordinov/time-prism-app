@@ -6,6 +6,7 @@ import DateNavHeader from '../components/DateNavHeader'
 import SearchableSelect, { type SelectOption } from '../components/SearchableSelect'
 import { useSessions } from '../hooks/useSessions'
 import { useProjects } from '../hooks/useProjects'
+import { useActivities } from '../hooks/useActivities'
 import type { SessionWithProject } from '@shared/types'
 
 // Filter icons
@@ -98,6 +99,7 @@ export default function Tracking() {
 
   const { sessions, create, update, remove } = useSessions({ start_date, end_date })
   const { projects } = useProjects()
+  const { activities } = useActivities()
 
   // Build filter options from sessions
   const clientOptions: SelectOption[] = useMemo(() => {
@@ -161,16 +163,24 @@ export default function Tracking() {
       project_id: session.project_id,
       start_at: session.start_at,
       end_at: session.end_at,
-      notes: session.notes
+      notes: session.notes,
+      activity_id: session.activity_id
     })
   }
 
-  const handleCreate = async (projectId: number, startAt: string, endAt: string, notes?: string) => {
+  const handleCreate = async (
+    projectId: number,
+    startAt: string,
+    endAt: string,
+    notes?: string,
+    activityId?: number | null
+  ) => {
     await create({
       project_id: projectId,
       start_at: startAt,
       end_at: endAt,
-      notes
+      notes,
+      activity_id: activityId
     })
   }
 
@@ -372,6 +382,7 @@ export default function Tracking() {
                 sessions={filteredSessions}
                 totalSessions={sessions.length}
                 projects={projects}
+                activities={activities}
                 currentDate={currentDate}
                 onUpdate={handleUpdate}
                 onCreate={handleCreate}
