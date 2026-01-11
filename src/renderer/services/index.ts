@@ -12,3 +12,4 @@ export {
   type DailyStats,
   type PeriodComparison,
 } from './reportService'
+export { activityService, ActivityValidationError } from './activityService'
