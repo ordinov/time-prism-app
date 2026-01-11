@@ -3,11 +3,13 @@ import { getDatabase } from './database'
 import { createBackup, listBackups, restoreBackup, exportBackup, importBackup, deleteBackups, createManualBackup, downloadBackup, downloadArchive, uploadBackup, uploadArchive } from './backup'
 import { getBackupConfig, setBackupConfig, restartBackupScheduler } from './backup-scheduler'
 import type {
-  Client, Project, Session,
+  Client, Project, Session, Activity,
   CreateClientInput, UpdateClientInput,
   CreateProjectInput, UpdateProjectInput,
   CreateSessionInput, UpdateSessionInput,
-  SessionQuery, ProjectWithClient, ProjectWithStats, SessionWithProject,
+  CreateActivityInput, UpdateActivityInput,
+  SessionQuery, ActivityQuery,
+  ProjectWithClient, ProjectWithStats, SessionWithProject, ActivityWithProject,
   Setting, SettingsMap, BackupConfig
 } from '../shared/types'
 
@@ -115,10 +117,12 @@ export function registerIpcHandlers(): void {
     const whereClause = conditions.join(' AND ')
 
     let sql = `
-      SELECT s.*, p.name as project_name, p.color as project_color, c.name as client_name
+      SELECT s.*, p.name as project_name, p.color as project_color, c.name as client_name,
+             a.name as activity_name
       FROM sessions s
       JOIN projects p ON s.project_id = p.id
       LEFT JOIN clients c ON p.client_id = c.id
+      LEFT JOIN activities a ON s.activity_id = a.id
       WHERE ${whereClause}
       ORDER BY s.start_at
     `
@@ -171,16 +175,16 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('db:sessions:create', (_, input: CreateSessionInput): Session => {
     const db = getDatabase()
     const result = db.prepare(
-      'INSERT INTO sessions (project_id, start_at, end_at, notes) VALUES (?, ?, ?, ?)'
-    ).run(input.project_id, input.start_at, input.end_at, input.notes ?? null)
+      'INSERT INTO sessions (project_id, start_at, end_at, notes, activity_id) VALUES (?, ?, ?, ?, ?)'
+    ).run(input.project_id, input.start_at, input.end_at, input.notes ?? null, input.activity_id ?? null)
     return db.prepare('SELECT * FROM sessions WHERE id = ?').get(result.lastInsertRowid) as Session
   })
 
   ipcMain.handle('db:sessions:update', (_, input: UpdateSessionInput): Session => {
     const db = getDatabase()
     db.prepare(
-      'UPDATE sessions SET project_id = ?, start_at = ?, end_at = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).run(input.project_id, input.start_at, input.end_at, input.notes ?? null, input.id)
+      'UPDATE sessions SET project_id = ?, start_at = ?, end_at = ?, notes = ?, activity_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).run(input.project_id, input.start_at, input.end_at, input.notes ?? null, input.activity_id ?? null, input.id)
     return db.prepare('SELECT * FROM sessions WHERE id = ?').get(input.id) as Session
   })
 
@@ -193,6 +197,55 @@ export function registerIpcHandlers(): void {
     const db = getDatabase()
     const result = db.prepare('DELETE FROM sessions WHERE project_id = ?').run(projectId)
     return result.changes
+  })
+
+  // Activities
+  ipcMain.handle('db:activities:list', (_, query: ActivityQuery = {}): ActivityWithProject[] => {
+    const db = getDatabase()
+
+    const conditions: string[] = ['1=1']
+    const params: unknown[] = []
+
+    if (query.project_id !== undefined) {
+      if (query.includeGlobal !== false) {
+        conditions.push('(a.project_id IS NULL OR a.project_id = ?)')
+        params.push(query.project_id)
+      } else {
+        conditions.push('a.project_id = ?')
+        params.push(query.project_id)
+      }
+    }
+
+    const sql = `
+      SELECT a.*, p.name as project_name, p.color as project_color
+      FROM activities a
+      LEFT JOIN projects p ON a.project_id = p.id
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY a.project_id IS NOT NULL, a.name
+    `
+
+    return db.prepare(sql).all(...params) as ActivityWithProject[]
+  })
+
+  ipcMain.handle('db:activities:create', (_, input: CreateActivityInput): Activity => {
+    const db = getDatabase()
+    const result = db.prepare(
+      'INSERT INTO activities (name, project_id) VALUES (?, ?)'
+    ).run(input.name, input.project_id ?? null)
+    return db.prepare('SELECT * FROM activities WHERE id = ?').get(result.lastInsertRowid) as Activity
+  })
+
+  ipcMain.handle('db:activities:update', (_, input: UpdateActivityInput): Activity => {
+    const db = getDatabase()
+    db.prepare(
+      'UPDATE activities SET name = ?, project_id = ? WHERE id = ?'
+    ).run(input.name, input.project_id ?? null, input.id)
+    return db.prepare('SELECT * FROM activities WHERE id = ?').get(input.id) as Activity
+  })
+
+  ipcMain.handle('db:activities:delete', (_, id: number): void => {
+    const db = getDatabase()
+    db.prepare('DELETE FROM activities WHERE id = ?').run(id)
   })
 
   // Backup
