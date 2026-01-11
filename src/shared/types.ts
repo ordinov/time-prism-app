@@ -17,11 +17,24 @@ export interface Project {
 export interface Session {
   id: number
   project_id: number
+  activity_id: number | null
   start_at: string
   end_at: string
   notes: string | null
   created_at: string
   updated_at: string
+}
+
+export interface Activity {
+  id: number
+  name: string
+  project_id: number | null
+  created_at: string
+}
+
+export interface ActivityWithProject extends Activity {
+  project_name: string | null
+  project_color: string | null
 }
 
 // With relations
@@ -38,6 +51,7 @@ export interface SessionWithProject extends Session {
   project_name: string
   project_color: string
   client_name: string | null
+  activity_name: string | null
 }
 
 // Input types
@@ -69,6 +83,7 @@ export interface CreateSessionInput {
   start_at: string
   end_at: string
   notes?: string | null
+  activity_id?: number | null
 }
 
 export interface UpdateSessionInput {
@@ -77,6 +92,23 @@ export interface UpdateSessionInput {
   start_at: string
   end_at: string
   notes?: string | null
+  activity_id?: number | null
+}
+
+export interface CreateActivityInput {
+  name: string
+  project_id?: number | null
+}
+
+export interface UpdateActivityInput {
+  id: number
+  name: string
+  project_id?: number | null
+}
+
+export interface ActivityQuery {
+  project_id?: number | null
+  includeGlobal?: boolean
 }
 
 // Query types
