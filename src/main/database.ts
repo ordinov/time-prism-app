@@ -49,6 +49,15 @@ export function initDatabase(): Database.Database {
       value TEXT NOT NULL,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS activities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_activities_project_id ON activities(project_id);
   `)
 
   // Migration: add notes column if not exists
@@ -58,6 +67,15 @@ export function initDatabase(): Database.Database {
 
   if (hasNotesColumn.count === 0) {
     db.exec(`ALTER TABLE sessions ADD COLUMN notes TEXT DEFAULT NULL`)
+  }
+
+  // Migration: add activity_id column if not exists
+  const hasActivityColumn = db.prepare(`
+    SELECT COUNT(*) as count FROM pragma_table_info('sessions') WHERE name='activity_id'
+  `).get() as { count: number }
+
+  if (hasActivityColumn.count === 0) {
+    db.exec(`ALTER TABLE sessions ADD COLUMN activity_id INTEGER REFERENCES activities(id) ON DELETE SET NULL`)
   }
 
   return db
