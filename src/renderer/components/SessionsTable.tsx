@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import DatePicker, { registerLocale } from 'react-datepicker'
 import { it } from 'date-fns/locale'
 import 'react-datepicker/dist/react-datepicker.css'
-import type { SessionWithProject, ProjectWithClient } from '@shared/types'
+import type { SessionWithProject, ProjectWithClient, ActivityWithProject } from '@shared/types'
 import { useToast } from '../context/ToastContext'
 import ConfirmModal from './ConfirmModal'
 import NoteViewModal from './NoteViewModal'
@@ -45,13 +45,19 @@ const ExpandIcon = () => (
   </svg>
 )
 
+const NoteIcon = ({ filled }: { filled: boolean }) => (
+  <svg className="w-4 h-4" fill={filled ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+  </svg>
+)
+
 // Types
-type SortKey = 'client' | 'project' | 'date' | 'start' | 'end' | 'notes' | 'hours' | 'days'
+type SortKey = 'client' | 'project' | 'date' | 'start' | 'end' | 'activity' | 'notes' | 'hours' | 'days'
 type SortDirection = 'asc' | 'desc'
 
 interface EditingCell {
   sessionId: number
-  field: 'project' | 'date' | 'start' | 'end' | 'notes'
+  field: 'project' | 'date' | 'start' | 'end' | 'activity' | 'notes'
 }
 
 interface NewRowData {
@@ -59,6 +65,7 @@ interface NewRowData {
   date: string  // YYYY-MM-DD format
   start: string // HH:MM format
   end: string   // HH:MM format
+  activityId: number | null
   notes: string
 }
 
@@ -66,14 +73,15 @@ interface Props {
   sessions: SessionWithProject[]
   totalSessions?: number
   projects: ProjectWithClient[]
+  activities: ActivityWithProject[]
   currentDate: Date
   onUpdate: (session: SessionWithProject) => Promise<void>
-  onCreate: (projectId: number, startAt: string, endAt: string, notes?: string) => Promise<void>
+  onCreate: (projectId: number, startAt: string, endAt: string, notes?: string, activityId?: number | null) => Promise<void>
   onDelete: (id: number) => Promise<void>
 }
 
 
-export default function SessionsTable({ sessions, totalSessions, projects, currentDate, onUpdate, onCreate, onDelete }: Props) {
+export default function SessionsTable({ sessions, totalSessions, projects, activities, currentDate, onUpdate, onCreate, onDelete }: Props) {
   const { showToast } = useToast()
   const [sortKey, setSortKey] = useState<SortKey>('date')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -86,7 +94,7 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
   const [newRowErrors, setNewRowErrors] = useState<{ project?: boolean; end?: boolean; timeRange?: boolean }>({})
   const [calendarOpen, setCalendarOpen] = useState<'edit' | 'new' | null>(null)
   const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0 })
-  const [noteViewModal, setNoteViewModal] = useState<{ note: string } | null>(null)
+  const [noteViewModal, setNoteViewModal] = useState<{ note: string; sessionId: number } | null>(null)
 
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(null)
   const calendarRef = useRef<HTMLDivElement>(null)
@@ -111,6 +119,9 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
           break
         case 'end':
           comparison = new Date(a.end_at).getTime() - new Date(b.end_at).getTime()
+          break
+        case 'activity':
+          comparison = (a.activity_name || '').localeCompare(b.activity_name || '')
           break
         case 'notes':
           comparison = (a.notes || '').localeCompare(b.notes || '')
@@ -207,6 +218,10 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
         }
 
         updatedSession.end_at = newEnd.toISOString()
+        break
+      }
+      case 'activity': {
+        updatedSession.activity_id = editValue ? parseInt(editValue) : null
         break
       }
       case 'notes':
@@ -380,6 +395,9 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
       case 'end':
         setEditValue(toTimeInputValue(session.end_at))
         break
+      case 'activity':
+        setEditValue(session.activity_id?.toString() || '')
+        break
       case 'notes':
         setEditValue(session.notes || '')
         break
@@ -401,7 +419,7 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
       if (editingCell) {
         const session = sessions.find(s => s.id === editingCell.sessionId)
         if (session) {
-          const fields: EditingCell['field'][] = ['project', 'date', 'start', 'end', 'notes']
+          const fields: EditingCell['field'][] = ['project', 'date', 'start', 'end', 'activity', 'notes']
           const currentIndex = fields.indexOf(editingCell.field)
           const nextIndex = (currentIndex + 1) % fields.length
 
@@ -431,6 +449,7 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
       date: dateStr,
       start: startStr,
       end: '',
+      activityId: null,
       notes: ''
     })
   }
@@ -481,7 +500,8 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
         newRow.projectId!,
         startDate.toISOString(),
         endDate.toISOString(),
-        newRow.notes || undefined
+        newRow.notes || undefined,
+        newRow.activityId
       )
       showToast('Sessione creata', 'success')
       setNewRow(null)
@@ -558,6 +578,26 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
               className="input py-1 text-sm font-mono w-full"
             />
           )
+        case 'activity':
+          const availableActivities = activities.filter(
+            a => a.project_id === null || a.project_id === session.project_id
+          )
+          return (
+            <select
+              ref={inputRef as React.RefObject<HTMLSelectElement>}
+              value={editValue}
+              onChange={e => setEditValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="select w-full py-1 text-sm"
+            >
+              <option value="">Nessuna attività</option>
+              {availableActivities.map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.name}{a.project_id ? '' : ' (Globale)'}
+                </option>
+              ))}
+            </select>
+          )
         case 'notes':
           return (
             <input
@@ -618,28 +658,29 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
             )}
           </div>
         )
+      case 'activity':
+        return (
+          <div onClick={() => startEdit(session, field)} className={cellClasses}>
+            {session.activity_name || <span className="text-[var(--text-muted)]">—</span>}
+          </div>
+        )
       case 'notes':
         return (
-          <div className={`${cellClasses} max-w-[200px] xl:max-w-[400px] 2xl:max-w-[600px] flex items-center gap-2`}>
-            <span
-              onClick={() => startEdit(session, field)}
-              className={`block truncate flex-1 ${session.notes ? '' : 'text-[var(--text-muted)]'}`}
-              title={session.notes || ''}
+          <div className={`${cellClasses} flex items-center justify-center`}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setNoteViewModal({ note: session.notes || '', sessionId: session.id })
+              }}
+              className={`p-1.5 rounded transition-colors ${
+                session.notes
+                  ? 'text-[var(--prism-violet)] hover:bg-[var(--prism-violet)]/10'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-white/5'
+              }`}
+              title={session.notes ? 'Visualizza/modifica nota' : 'Aggiungi nota'}
             >
-              {session.notes?.split('\n')[0] || '—'}
-            </span>
-            {session.notes && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setNoteViewModal({ note: session.notes! })
-                }}
-                className="flex-shrink-0 p-1 rounded hover:bg-white/10 transition-colors text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                title="Visualizza nota completa"
-              >
-                <ExpandIcon />
-              </button>
-            )}
+              <NoteIcon filled={!!session.notes} />
+            </button>
           </div>
         )
     }
@@ -714,12 +755,17 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
                 </span>
               </th>
               <th
-                onClick={() => handleSort('notes')}
+                onClick={() => handleSort('activity')}
                 className="text-left px-3 py-3 font-medium text-[var(--text-secondary)] cursor-pointer hover:text-[var(--text-primary)] transition-colors select-none"
               >
                 <span className="flex items-center gap-2">
-                  Note
-                  <span className="text-[var(--text-muted)] text-xs">{getSortIndicator('notes')}</span>
+                  Attività
+                  <span className="text-[var(--text-muted)] text-xs">{getSortIndicator('activity')}</span>
+                </span>
+              </th>
+              <th className="text-center px-3 py-3 font-medium text-[var(--text-secondary)] w-12">
+                <span title="Note">
+                  <NoteIcon filled={false} />
                 </span>
               </th>
               <th
@@ -813,6 +859,25 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
                     )}
                   </div>
                 </td>
+                {/* Attività - select */}
+                <td className="min-w-[150px] px-1">
+                  <select
+                    value={newRow.activityId ?? ''}
+                    onChange={e => setNewRow({ ...newRow, activityId: e.target.value ? parseInt(e.target.value) : null })}
+                    className="select w-full py-1 text-sm"
+                    disabled={!newRow.projectId}
+                  >
+                    <option value="">Nessuna</option>
+                    {activities
+                      .filter(a => a.project_id === null || a.project_id === newRow.projectId)
+                      .map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}{a.project_id ? '' : ' (Globale)'}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </td>
                 {/* Note - optional */}
                 <td className="min-w-[150px] px-1">
                   <input
@@ -875,7 +940,8 @@ export default function SessionsTable({ sessions, totalSessions, projects, curre
                   <td className="min-w-[120px]">{renderCell(session, 'date')}</td>
                   <td className="min-w-[80px]">{renderCell(session, 'start')}</td>
                   <td className="min-w-[80px]">{renderCell(session, 'end')}</td>
-                  <td className="min-w-[150px]">{renderCell(session, 'notes')}</td>
+                  <td className="min-w-[150px]">{renderCell(session, 'activity')}</td>
+                  <td className="w-12">{renderCell(session, 'notes')}</td>
                   <td className="px-3 py-2 text-right font-mono text-[var(--text-secondary)] bg-[var(--bg-overlay)]">
                     {formatHours(hours)}
                   </td>
