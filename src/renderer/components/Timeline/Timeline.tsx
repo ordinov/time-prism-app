@@ -3,11 +3,13 @@ import TimelineHeader from './TimelineHeader'
 import TimelineRuler from './TimelineRuler'
 import TimelineTrack from './TimelineTrack'
 import TrackRemovalModal from './TrackRemovalModal'
+import NoteModal from './NoteModal'
 import SearchableProjectSelect from './SearchableProjectSelect'
 import SearchableSelect, { type SelectOption } from '../SearchableSelect'
 import { useSessions } from '../../hooks/useSessions'
 import { useProjects } from '../../hooks/useProjects'
 import { useSettings } from '../../hooks/useSettings'
+import { useActivities } from '../../hooks/useActivities'
 import type { ViewMode } from './utils'
 import { getViewStartEnd, getHoursInView, dateToPosition } from './utils'
 
@@ -87,6 +89,11 @@ export default function Timeline({
   const [containerWidth, setContainerWidth] = useState(0)
   const [now, setNow] = useState(new Date())
   const [removalModal, setRemovalModal] = useState<{ projectId: number } | null>(null)
+  const [pendingSession, setPendingSession] = useState<{
+    projectId: number
+    startAt: Date
+    endAt: Date
+  } | null>(null)
 
   // Sidebar resize state
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH)
@@ -180,6 +187,8 @@ export default function Timeline({
   })
 
   const { projects, loading: projectsLoading } = useProjects()
+
+  const { activities } = useActivities()
 
   // Apply filters to sessions
   const filteredSessions = useMemo(() => {
@@ -383,12 +392,24 @@ export default function Timeline({
     }
   }, [handleWheel])
 
-  const handleCreateSession = async (projectId: number, startAt: Date, endAt: Date) => {
+  const handleCreateSession = async (
+    projectId: number,
+    startAt: Date,
+    endAt: Date,
+    notes?: string | null,
+    activityId?: number | null
+  ) => {
     await create({
       project_id: projectId,
       start_at: startAt.toISOString(),
-      end_at: endAt.toISOString()
+      end_at: endAt.toISOString(),
+      notes,
+      activity_id: activityId
     })
+  }
+
+  const handleCreateSessionWithModal = (projectId: number, startAt: Date, endAt: Date) => {
+    setPendingSession({ projectId, startAt, endAt })
   }
 
   const handleUpdateSession = async (sessionId: number, startAt: Date, endAt: Date) => {
@@ -407,7 +428,7 @@ export default function Timeline({
     await remove(sessionId)
   }
 
-  const handleUpdateSessionNote = async (sessionId: number, notes: string | null) => {
+  const handleUpdateSessionNote = async (sessionId: number, notes: string | null, activityId: number | null) => {
     const session = sessions.find(s => s.id === sessionId)
     if (!session) return
     await update({
@@ -415,7 +436,8 @@ export default function Timeline({
       project_id: session.project_id,
       start_at: session.start_at,
       end_at: session.end_at,
-      notes
+      notes,
+      activity_id: activityId
     })
   }
 
@@ -664,6 +686,7 @@ export default function Timeline({
               projectColor={project.color}
               clientName={project.client_name}
               sessions={filteredSessions.filter(s => s.project_id === project.id)}
+              activities={activities.filter(a => a.project_id === null || a.project_id === project.id)}
               viewStart={viewStart}
               pixelsPerHour={pixelsPerHour}
               totalWidth={totalWidth}
@@ -672,6 +695,7 @@ export default function Timeline({
               nowPosition={nowPosition}
               sidebarWidth={sidebarWidth}
               onCreateSession={handleCreateSession}
+              onCreateSessionWithModal={handleCreateSessionWithModal}
               onUpdateSession={handleUpdateSession}
               onDeleteSession={handleDeleteSession}
               onRemoveTrack={handleRemoveTrackRequest}
@@ -712,6 +736,30 @@ export default function Timeline({
           if (removalModal) await handleDeleteAllSessions(removalModal.projectId)
         }}
       />
+
+      {/* Session creation modal */}
+      {pendingSession && (
+        <NoteModal
+          isOpen={true}
+          sessionId={0}
+          startAt={pendingSession.startAt.toISOString()}
+          endAt={pendingSession.endAt.toISOString()}
+          currentNote={null}
+          currentActivityId={null}
+          activities={activities.filter(a => a.project_id === null || a.project_id === pendingSession.projectId)}
+          onSave={(_, notes, activityId) => {
+            handleCreateSession(
+              pendingSession.projectId,
+              pendingSession.startAt,
+              pendingSession.endAt,
+              notes,
+              activityId
+            )
+            setPendingSession(null)
+          }}
+          onClose={() => setPendingSession(null)}
+        />
+      )}
     </div>
   )
 }
