@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import type { SessionWithProject } from '@shared/types'
+import type { SessionWithProject, ActivityWithProject } from '@shared/types'
 import { dateToPosition, positionToDate, snapToGrid, formatTimeRange, formatDuration } from './utils'
 import SessionTooltip from './SessionTooltip'
 import NoteModal from './NoteModal'
@@ -18,6 +18,7 @@ interface Props {
   projectColor: string
   clientName: string | null
   sessions: SessionWithProject[]
+  activities: ActivityWithProject[]
   viewStart: Date
   pixelsPerHour: number
   totalWidth: number
@@ -26,9 +27,10 @@ interface Props {
   nowPosition: number | null
   sidebarWidth: number
   onCreateSession: (projectId: number, startAt: Date, endAt: Date) => void
+  onCreateSessionWithModal: (projectId: number, startAt: Date, endAt: Date) => void
   onUpdateSession: (sessionId: number, startAt: Date, endAt: Date) => void
   onDeleteSession: (sessionId: number) => void
-  onUpdateSessionNote: (sessionId: number, notes: string | null) => void
+  onUpdateSessionNote: (sessionId: number, notes: string | null, activityId: number | null) => void
   onRemoveTrack: (projectId: number) => void
 }
 
@@ -38,6 +40,7 @@ export default function TimelineTrack({
   projectColor,
   clientName,
   sessions,
+  activities,
   viewStart,
   pixelsPerHour,
   totalWidth,
@@ -46,6 +49,7 @@ export default function TimelineTrack({
   nowPosition,
   sidebarWidth,
   onCreateSession,
+  onCreateSessionWithModal,
   onUpdateSession,
   onDeleteSession,
   onUpdateSessionNote,
@@ -193,7 +197,8 @@ export default function TimelineTrack({
       if (endX - startX > 10) {
         const startDate = snapToGrid(positionToDate(startX, viewStart, pixelsPerHour))
         const endDate = snapToGrid(positionToDate(endX, viewStart, pixelsPerHour))
-        onCreateSession(projectId, startDate, endDate)
+        // Defer session creation to parent which will show modal first
+        onCreateSessionWithModal(projectId, startDate, endDate)
       }
     }
     setIsDragging(false)
@@ -638,6 +643,8 @@ export default function TimelineTrack({
           startAt={noteModal.session.start_at}
           endAt={noteModal.session.end_at}
           currentNote={noteModal.session.notes}
+          currentActivityId={noteModal.session.activity_id}
+          activities={activities}
           onSave={onUpdateSessionNote}
           onClose={() => setNoteModal(null)}
         />
