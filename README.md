@@ -123,6 +123,7 @@ MIT License - vedi [LICENSE](LICENSE) per i dettagli.
 - Settings entity to store user preferences
 - Advanced DB backup/restore feature
 - Live tracking feature saving data every 1 minute
+- New "activities" concept to better define time entries
 - Some UI/UX improvements
 
 ### v0.1.0

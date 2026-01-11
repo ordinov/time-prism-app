@@ -51,7 +51,10 @@
       "Bash(git -C \"C:\\\\_apps\\\\time-prism\" remote -v)",
       "Bash(wc:*)",
       "Bash(find:*)",
-      "Bash(git -C \"C:\\\\_apps\\\\time-prism\" tag)"
+      "Bash(git -C \"C:\\\\_apps\\\\time-prism\" tag)",
+      "Bash(git -C \"C:\\\\_apps\\\\time-prism\" diff src/renderer/components/SessionsTable.tsx)",
+      "Bash(git -C \"C:\\\\_apps\\\\time-prism\" add src/renderer/components/SessionsTable.tsx)",
+      "Bash(git -C \"C:\\\\_apps\\\\time-prism\" commit -m \"$\\(cat <<''EOF''\nfeat\\(ui\\): add Activity column and note icon to SessionsTable\nEOF\n\\)\")"
     ]
   }
 }

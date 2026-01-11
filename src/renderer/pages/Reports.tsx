@@ -10,7 +10,7 @@ import { parseDateInputValue } from '../utils/dateUtils'
 
 registerLocale('it', it)
 
-type Preset = 'week' | 'month' | '30days' | 'custom'
+type Preset = 'today' | 'week' | 'month' | '30days' | 'custom'
 
 export default function Reports() {
   const [preset, setPreset] = useState<Preset>('month')
@@ -29,6 +29,10 @@ export default function Reports() {
     end.setHours(23, 59, 59, 999)
 
     switch (preset) {
+      case 'today':
+        start = new Date(now)
+        start.setHours(0, 0, 0, 0)
+        break
       case 'week':
         start = new Date(now)
         const day = start.getDay()
@@ -155,6 +159,7 @@ export default function Reports() {
             onChange={e => setPreset(e.target.value as Preset)}
             className="select"
           >
+            <option value="today">Oggi</option>
             <option value="week">Questa settimana</option>
             <option value="month">Questo mese</option>
             <option value="30days">Ultimi 30 giorni</option>
